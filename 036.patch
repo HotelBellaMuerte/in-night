@@ -1,0 +1,15 @@
+--- a/chrome/browser/ui/startup/startup_tab_provider.cc	2017-10-04 18:07:36.000000000 -0400
++++ b/chrome/browser/ui/startup/startup_tab_provider.cc	2017-10-08 19:50:38.078311692 -0400
+@@ -187,12 +187,6 @@
+ StartupTabs StartupTabProviderImpl::GetStandardOnboardingTabsForState(
+     const StandardOnboardingTabsParams& params) {
+   StartupTabs tabs;
+-  if (CanShowWelcome(params.is_signin_allowed, params.is_supervised_user) &&
+-      ShouldShowWelcomeForOnboarding(params.has_seen_welcome_page,
+-                                     params.is_signed_in,
+-                                     params.is_signin_in_progress)) {
+-    tabs.emplace_back(GetWelcomePageUrl(!params.is_first_run), false);
+-  }
+   return tabs;
+ }
+ 

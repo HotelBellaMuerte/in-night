@@ -1,0 +1,11 @@
+--- a/chrome/browser/profiles/profile.cc	2017-10-04 18:07:35.000000000 -0400
++++ b/chrome/browser/profiles/profile.cc	2017-10-08 19:07:43.070482033 -0400
+@@ -136,7 +136,7 @@
+ void Profile::RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(
+       prefs::kSearchSuggestEnabled,
+-      true,
++      false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+ #if defined(OS_ANDROID)
+   registry->RegisterStringPref(

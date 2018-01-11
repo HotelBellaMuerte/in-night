@@ -1,0 +1,16 @@
+# Disables WebRTC log uploading to Google
+
+--- a/content/common/BUILD.gn	2017-12-08 16:20:49.640051414 -0400
++++ b/content/common/BUILD.gn	2017-12-08 16:21:50.453851786 -0400
+@@ -258,11 +258,6 @@
+     "presentation/presentation_struct_traits.cc",
+     "presentation/presentation_struct_traits.h",
+     "process_type.cc",
+-    "quarantine/quarantine.cc",
+-    "quarantine/quarantine_constants_linux.h",
+-    "quarantine/quarantine_linux.cc",
+-    "quarantine/quarantine_mac.mm",
+-    "quarantine/quarantine_win.cc",
+     "render_widget_surface_properties.cc",
+     "render_widget_surface_properties.h",
+     "resize_params.cc",
