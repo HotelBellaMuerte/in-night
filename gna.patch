@@ -1,44 +1,10 @@
-From f5c393ca36917566cf13cd0682d8282671392d56 Mon Sep 17 00:00:00 2001
-From: Tom Anderson <thomasanderson@chromium.org>
-Date: Thu, 18 Jan 2018 10:48:34 -0800
-Subject: [PATCH] Fix gn bootstrap
-
-BUG=803324
-R=dpranke
-
-Change-Id: Ib8a66495b9657da130a6608e6dacf6cf471cd504
----
-
-diff --git a/tools/gn/bootstrap/bootstrap.py b/tools/gn/bootstrap/bootstrap.py
-index 6e7d145..3d29e50 100755
---- a/tools/gn/bootstrap/bootstrap.py
-+++ b/tools/gn/bootstrap/bootstrap.py
-@@ -225,10 +225,9 @@
-     write_compiled_message(root_gen_dir,
-         'base/trace_event/etw_manifest/chrome_events_win.man')
+--- a/chrome/browser/vr/sample_queue.h	2018-01-19 04:04:21.000000000 -0400
++++ b/chrome/browser/vr/sample_queue.h.new	2018-01-19 15:48:34.947585606 -0400
+@@ -6,6 +6,7 @@
+ #define CHROME_BROWSER_VR_SAMPLE_QUEUE_H_
  
--  if is_android:
--    write_buildflag_header_manually(
--        root_gen_dir, 'base/android/library_loader.h',
--        {'USE_LLD': 'false'})
-+  write_buildflag_header_manually(
-+      root_gen_dir, 'base/android/library_loader.h',
-+      {'USE_LLD': 'false'})
+ #include <vector>
++#include <cstdint>
  
-   write_gn_ninja(os.path.join(tempdir, 'build.ninja'),
-                  root_gen_dir, options)
-@@ -468,13 +467,12 @@
-       'base/json/json_string_value_serializer.cc',
-       'base/json/json_writer.cc',
-       'base/json/string_escape.cc',
--      'base/lazy_instance.cc',
-+      'base/lazy_instance_helpers.cc',
-       'base/location.cc',
-       'base/logging.cc',
-       'base/md5.cc',
-       'base/memory/ref_counted.cc',
-       'base/memory/ref_counted_memory.cc',
--      'base/memory/singleton.cc',
-       'base/memory/shared_memory_handle.cc',
-       'base/memory/shared_memory_tracker.cc',
-       'base/memory/weak_ptr.cc',
+ #include "base/macros.h"
+ 
