@@ -1,5 +1,14 @@
 --- a/components/safe_browsing/features.cc	2017-10-11 15:10:28.000000000 -0400
 +++ b/components/safe_browsing/features.cc	2017-10-15 11:00:50.754740977 -0400
+@@ -43,7 +43,7 @@
+     base::FEATURE_DISABLED_BY_DEFAULT};
+ 
+ const base::Feature kDispatchSafetyNetCheckOffThread{
+-    "DispatchSafetyNetCheckOffThread", base::FEATURE_ENABLED_BY_DEFAULT};
++    "DispatchSafetyNetCheckOffThread", base::FEATURE_DISABLED_BY_DEFAULT};
+ 
+ const base::Feature kAppendRecentNavigationEvents{
+     "AppendRecentNavigationEvents", base::FEATURE_DISABLED_BY_DEFAULT};
 @@ -59,9 +59,9 @@
  } kExperimentalFeatures[]{
      {&kAdSamplerCollectButDontSendFeature, false},

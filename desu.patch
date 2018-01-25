@@ -85,40 +85,6 @@ index 8c4909c..d72249b1 100644
    if (g_scheduler->verbose_logging()) {
      g_scheduler->Log("Pythoning", script_source.value() + " took " +
 
-From e2fa379c0427be539ec63b72db9f01ce36f9f409 Mon Sep 17 00:00:00 2001
-From: Tom Anderson <thomasanderson@chromium.org>
-Date: Wed, 24 Jan 2018 15:42:04 -0800
-Subject: [PATCH] Fix libwebp unbundle
-
-BUG=805488
-R=thestig
-
-Change-Id: I577bf4f5682cffced4f7424768545cc467ad6416
----
-
-diff --git a/build/linux/unbundle/libwebp.gn b/build/linux/unbundle/libwebp.gn
-index dd71f867..ab92ade 100644
---- a/build/linux/unbundle/libwebp.gn
-+++ b/build/linux/unbundle/libwebp.gn
-@@ -2,10 +2,16 @@
- # Use of this source code is governed by a BSD-style license that can be
- # found in the LICENSE file.
- 
--source_set("libwebp") {
-+source_set("libwebp_webp") {
-   libs = [
-     "webp",
-     "webpdemux",
-     "webpmux",
-   ]
- }
-+
-+group("libwebp") {
-+  deps = [
-+    ":libwebp_webp",
-+  ]
-+}
-
 From 51479bccd5809f7059a427be80b4d0f5cfd7184f Mon Sep 17 00:00:00 2001
 From: Tom Anderson <thomasanderson@chromium.org>
 Date: Wed, 24 Jan 2018 17:16:56 -0800
