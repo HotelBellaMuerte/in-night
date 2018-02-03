@@ -1,6 +1,6 @@
 --- a/content/browser/download/base_file.cc
 +++ b/content/browser/download/base_file.cc
-@@ -21,7 +21,6 @@
+@@ -22,7 +22,6 @@
  #include "content/browser/download/download_stats.h"
  #include "content/public/browser/content_browser_client.h"
  #include "content/public/browser/download_item.h"
@@ -8,7 +8,7 @@
  #include "crypto/secure_hash.h"
  #include "net/base/net_errors.h"
  
-@@ -437,7 +436,7 @@
+@@ -447,7 +446,7 @@
    return reason;
  }
  
@@ -17,12 +17,12 @@
  
  namespace {
  
-@@ -521,7 +520,7 @@
+@@ -531,7 +530,7 @@
    }
-   return DOWNLOAD_INTERRUPT_REASON_FILE_FAILED;
+   return download::DOWNLOAD_INTERRUPT_REASON_FILE_FAILED;
  }
 -#else  // !OS_WIN && !OS_MACOSX && !OS_LINUX
-+#else  // 1
- DownloadInterruptReason BaseFile::AnnotateWithSourceInformation(
++#else  1
+ download::DownloadInterruptReason BaseFile::AnnotateWithSourceInformation(
      const std::string& client_guid,
      const GURL& source_url,
