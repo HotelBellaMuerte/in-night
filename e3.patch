@@ -22,7 +22,7 @@
    return download::DOWNLOAD_INTERRUPT_REASON_FILE_FAILED;
  }
 -#else  // !OS_WIN && !OS_MACOSX && !OS_LINUX
-+#else  1
++#else  // 1
  download::DownloadInterruptReason BaseFile::AnnotateWithSourceInformation(
      const std::string& client_guid,
      const GURL& source_url,

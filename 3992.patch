@@ -26,9 +26,10 @@
  // Controls if local media casting is enabled.
  const base::Feature kEnableCastLocalMedia{"EnableCastLocalMedia",
                                            base::FEATURE_DISABLED_BY_DEFAULT};
- #endif
+-#endif
  
 -#if defined(OS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS)
++
 +
  namespace {
  const PrefService::Preference* GetMediaRouterPref(
