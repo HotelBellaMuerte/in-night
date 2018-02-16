@@ -1,41 +1,11 @@
-From 6fdce99c2b23815b490ba0135f77bcf89e067b32 Mon Sep 17 00:00:00 2001
-From: Tom Anderson <thomasanderson@chromium.org>
-Date: Mon, 12 Feb 2018 12:52:04 -0800
-Subject: [PATCH] Fix build with libstdc++
-
-libstdc++ couldn't do the implicit conversion from base::StringPiece
-to std::string.
-
-BUG=811394
-R=ksakamoto
-CC=​kouhei
-
-Change-Id: Ideaee888f1a0eb764ac06e90a1556693fc9ed36c
----
-
-diff --git a/content/browser/loader/signed_exchange_header.cc b/content/browser/loader/signed_exchange_header.cc
-index 20d724b..16c5f77 100644
---- a/content/browser/loader/signed_exchange_header.cc
-+++ b/content/browser/loader/signed_exchange_header.cc
-@@ -6,6 +6,8 @@
+--- a/third_party/webrtc/api/audio/audio_frame.cc	2018-02-15 07:08:02.000000000 -0400
++++ b/third_party/webrtc/api/audio/audio_frame.cc	2018-02-15 14:40:34.536836946 -0400
+@@ -8,6 +8,8 @@
+  *  be found in the AUTHORS file in the root of the source tree.
+  */
  
- #include <utility>
- 
-+#include "base/strings/string_piece.h"
++#include <cstring>
 +
- namespace content {
+ #include "api/audio/audio_frame.h"
  
- SignedExchangeHeader::SignedExchangeHeader() = default;
-@@ -13,7 +15,11 @@
- 
- void SignedExchangeHeader::AddResponseHeader(base::StringPiece name,
-                                              base::StringPiece value) {
--  response_headers_.insert(std::make_pair(name, value));
-+  std::string name_string;
-+  std::string value_string;
-+  name.CopyToString(&name_string);
-+  value.CopyToString(&value_string);
-+  response_headers_[name_string] = value_string;
- }
- 
- }  // namespace content
+ #include "rtc_base/checks.h"
