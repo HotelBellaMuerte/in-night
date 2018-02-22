@@ -1,6 +1,6 @@
 --- a/components/safe_browsing/features.cc	2017-10-11 15:10:28.000000000 -0400
 +++ b/components/safe_browsing/features.cc	2017-10-15 11:00:50.754740977 -0400
-@@ -43,7 +43,7 @@
+@@ -57,7 +57,7 @@
      base::FEATURE_DISABLED_BY_DEFAULT};
  
  const base::Feature kDispatchSafetyNetCheckOffThread{
@@ -9,16 +9,21 @@
  
  const base::Feature kAppendRecentNavigationEvents{
      "AppendRecentNavigationEvents", base::FEATURE_DISABLED_BY_DEFAULT};
-@@ -59,9 +59,9 @@
+@@ -76,12 +76,12 @@
  } kExperimentalFeatures[]{
      {&kAdSamplerCollectButDontSendFeature, false},
      {&kAdSamplerTriggerFeature, false},
 -    {&kAppendRecentNavigationEvents, true},
+-    {&kCheckByURLLoaderThrottle, true},
++    {&kAppendRecentNavigationEvents, false},
++    {&kCheckByURLLoaderThrottle, false},
+     {&kDispatchSafetyNetCheckOffThread, false},
 -    {&kGaiaPasswordReuseReporting, true},
 -    {&kGoogleBrandedPhishingWarning, true},
-+    {&kAppendRecentNavigationEvents, false},
+-    {&kInspectDownloadedRarFiles, true},
 +    {&kGaiaPasswordReuseReporting, false},
 +    {&kGoogleBrandedPhishingWarning, false},
++    {&kInspectDownloadedRarFiles, false},
      {&kThreatDomDetailsTagAndAttributeFeature, false},
      {&kTriggerThrottlerDailyQuotaFeature, false},
-     {&kDispatchSafetyNetCheckOffThread, false},
+ };
