@@ -1,16 +1,22 @@
-# Disables WebRTC log uploading to Google
-
---- a/content/common/BUILD.gn	2017-12-08 16:20:49.640051414 -0400
-+++ b/content/common/BUILD.gn	2017-12-08 16:21:50.453851786 -0400
-@@ -258,11 +258,6 @@
-     "presentation/presentation_struct_traits.cc",
-     "presentation/presentation_struct_traits.h",
-     "process_type.cc",
--    "quarantine/quarantine.cc",
--    "quarantine/quarantine_constants_linux.h",
--    "quarantine/quarantine_linux.cc",
--    "quarantine/quarantine_mac.mm",
--    "quarantine/quarantine_win.cc",
-     "render_widget_surface_properties.cc",
-     "render_widget_surface_properties.h",
-     "resize_params.cc",
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 498aff5..8b8a6a9 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -3475,8 +3475,6 @@
+       "renderer_context_menu/context_menu_content_type_platform_app.h",
+       "renderer_host/chrome_extension_message_filter.cc",
+       "renderer_host/chrome_extension_message_filter.h",
+-      "signin/chrome_proximity_auth_client.cc",
+-      "signin/chrome_proximity_auth_client.h",
+       "speech/extension_api/tts_engine_extension_api.cc",
+       "speech/extension_api/tts_engine_extension_api.h",
+       "speech/extension_api/tts_engine_extension_observer.cc",
+@@ -3625,6 +3623,8 @@
+ 
+     if (is_chromeos) {
+       sources += [
++        "signin/chrome_proximity_auth_client.cc",
++        "signin/chrome_proximity_auth_client.h",
+         "signin/easy_unlock_app_manager.cc",
+         "signin/easy_unlock_app_manager.h",
+         "signin/easy_unlock_auth_attempt.cc",
