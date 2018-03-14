@@ -9,18 +9,19 @@
  
  const base::Feature kAppendRecentNavigationEvents{
      "AppendRecentNavigationEvents", base::FEATURE_DISABLED_BY_DEFAULT};
-@@ -76,12 +76,12 @@
+@@ -79,13 +79,13 @@
  } kExperimentalFeatures[]{
      {&kAdSamplerCollectButDontSendFeature, false},
      {&kAdSamplerTriggerFeature, false},
 -    {&kAppendRecentNavigationEvents, true},
--    {&kCheckByURLLoaderThrottle, true},
 +    {&kAppendRecentNavigationEvents, false},
-+    {&kCheckByURLLoaderThrottle, false},
+     {&kCheckByURLLoaderThrottle, true},
      {&kDispatchSafetyNetCheckOffThread, false},
+-    {&kEnterprisePasswordProtectionV1, true},
 -    {&kGaiaPasswordReuseReporting, true},
 -    {&kGoogleBrandedPhishingWarning, true},
 -    {&kInspectDownloadedRarFiles, true},
++    {&kEnterprisePasswordProtectionV1, false},
 +    {&kGaiaPasswordReuseReporting, false},
 +    {&kGoogleBrandedPhishingWarning, false},
 +    {&kInspectDownloadedRarFiles, false},
