@@ -1,40 +1,24 @@
 diff --git a/extensions/shell/installer/BUILD.gn b/extensions/shell/installer/BUILD.gn
-index a153ef7..673c37a 100644
+index 673c37a..6626a61 100644
 --- a/extensions/shell/installer/BUILD.gn
 +++ b/extensions/shell/installer/BUILD.gn
-@@ -10,9 +10,8 @@
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/sanitizers/sanitizers.gni")
++import("//build/config/sysroot.gni")
+ import("//build/config/ui.gni")
+ import("//build/util/process_version.gni")
+ import("//extensions/buildflags/buildflags.gni")
+@@ -10,8 +11,9 @@
  assert(enable_extensions)
  
  declare_args() {
--  enable_app_shell_installer =
--      is_desktop_linux && is_chrome_branded && current_cpu == "x64" &&
--      !is_component_build && !using_sanitizer
-+  enable_app_shell_installer = is_desktop_linux && current_cpu == "x64" &&
-+                               !is_component_build && !using_sanitizer
+-  enable_app_shell_installer = is_desktop_linux && current_cpu == "x64" &&
+-                               !is_component_build && !using_sanitizer
++  enable_app_shell_installer =
++      is_desktop_linux && current_cpu == "x64" && !is_component_build &&
++      use_sysroot && !using_sanitizer
  }
  
  # Meta-target that forwards to the installer of the correct type (if any).
-diff --git a/extensions/shell/installer/linux/BUILD.gn b/extensions/shell/installer/linux/BUILD.gn
-index 1317430..bd60b49 100644
---- a/extensions/shell/installer/linux/BUILD.gn
-+++ b/extensions/shell/installer/linux/BUILD.gn
-@@ -174,11 +174,18 @@
-   action(deb_target_name) {
-     visibility = [ ":*" ]
-     script = "//build/gn_run_binary.py"
-+
-+    assert(current_cpu == "x64", "app_shell installer only supported for amd64")
-     deb_arch = "amd64"
-+    if (is_chrome_branded) {
-+      package = "google-app-shell"
-+    } else {
-+      package = "chromium-app-shell"
-+    }
- 
-     inputs = packaging_files_binaries
-     outputs = [
--      "$root_out_dir/google-app-shell-${channel}_${chrome_version_full}-1_${deb_arch}.deb",
-+      "$root_out_dir/${package}-${channel}_${chrome_version_full}-1_${deb_arch}.deb",
-     ]
- 
-     args = [
