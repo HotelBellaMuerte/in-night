@@ -1,24 +1,445 @@
-diff --git a/extensions/shell/installer/BUILD.gn b/extensions/shell/installer/BUILD.gn
-index 673c37a..6626a61 100644
---- a/extensions/shell/installer/BUILD.gn
-+++ b/extensions/shell/installer/BUILD.gn
-@@ -3,6 +3,7 @@
- # found in the LICENSE file.
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+index c9ab2f0..689cad3 100644
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -562,6 +562,8 @@
+     "message_loop/timer_slack.h",
+     "metrics/bucket_ranges.cc",
+     "metrics/bucket_ranges.h",
++    "metrics/dummy_histogram.cc",
++    "metrics/dummy_histogram.h",
+     "metrics/field_trial.cc",
+     "metrics/field_trial.h",
+     "metrics/field_trial_param_associator.cc",
+diff --git a/base/android/record_histogram.cc b/base/android/record_histogram.cc
+index 0bc8423..f41ec99 100644
+--- a/base/android/record_histogram.cc
++++ b/base/android/record_histogram.cc
+@@ -42,6 +42,7 @@
+         break;
+       }
+       case SPARSE_HISTOGRAM:
++      case DUMMY_HISTOGRAM:
+         break;
+     }
+     return params_str;
+diff --git a/base/metrics/dummy_histogram.cc b/base/metrics/dummy_histogram.cc
+new file mode 100644
+index 0000000..2707733
+--- /dev/null
++++ b/base/metrics/dummy_histogram.cc
+@@ -0,0 +1,102 @@
++// Copyright 2017 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/metrics/dummy_histogram.h"
++
++#include <memory>
++
++#include "base/logging.h"
++#include "base/metrics/histogram_samples.h"
++#include "base/metrics/metrics_hashes.h"
++
++namespace base {
++
++namespace {
++
++// Helper classes for DummyHistogram.
++class DummySampleCountIterator : public SampleCountIterator {
++ public:
++  DummySampleCountIterator() {}
++  ~DummySampleCountIterator() override {}
++
++  // SampleCountIterator:
++  bool Done() const override { return true; }
++  void Next() override { NOTREACHED(); }
++  void Get(HistogramBase::Sample* min,
++           int64_t* max,
++           HistogramBase::Count* count) const override {
++    NOTREACHED();
++  }
++
++ private:
++  DISALLOW_COPY_AND_ASSIGN(DummySampleCountIterator);
++};
++
++class DummyHistogramSamples : public HistogramSamples {
++ public:
++  explicit DummyHistogramSamples() : HistogramSamples(0, new LocalMetadata()) {}
++  ~DummyHistogramSamples() override {
++    delete static_cast<LocalMetadata*>(meta());
++  }
++
++  // HistogramSamples:
++  void Accumulate(HistogramBase::Sample value,
++                  HistogramBase::Count count) override {}
++  HistogramBase::Count GetCount(HistogramBase::Sample value) const override {
++    return HistogramBase::Count();
++  }
++  HistogramBase::Count TotalCount() const override {
++    return HistogramBase::Count();
++  }
++  std::unique_ptr<SampleCountIterator> Iterator() const override {
++    return std::make_unique<DummySampleCountIterator>();
++  }
++  bool AddSubtractImpl(SampleCountIterator* iter, Operator op) override {
++    return true;
++  }
++
++ private:
++  DISALLOW_COPY_AND_ASSIGN(DummyHistogramSamples);
++};
++
++}  // namespace
++
++// static
++DummyHistogram* DummyHistogram::GetInstance() {
++  static base::NoDestructor<DummyHistogram> dummy_histogram;
++  return dummy_histogram.get();
++}
++
++uint64_t DummyHistogram::name_hash() const {
++  return HashMetricName(histogram_name());
++}
++
++HistogramType DummyHistogram::GetHistogramType() const {
++  return DUMMY_HISTOGRAM;
++}
++
++bool DummyHistogram::HasConstructionArguments(
++    Sample expected_minimum,
++    Sample expected_maximum,
++    uint32_t expected_bucket_count) const {
++  return true;
++}
++
++bool DummyHistogram::AddSamplesFromPickle(PickleIterator* iter) {
++  return true;
++}
++
++std::unique_ptr<HistogramSamples> DummyHistogram::SnapshotSamples() const {
++  return std::make_unique<DummyHistogramSamples>();
++}
++
++std::unique_ptr<HistogramSamples> DummyHistogram::SnapshotDelta() {
++  return std::make_unique<DummyHistogramSamples>();
++}
++
++std::unique_ptr<HistogramSamples> DummyHistogram::SnapshotFinalDelta() const {
++  return std::make_unique<DummyHistogramSamples>();
++}
++
++}  // namespace base
+diff --git a/base/metrics/dummy_histogram.h b/base/metrics/dummy_histogram.h
+new file mode 100644
+index 0000000..e2cb64e
+--- /dev/null
++++ b/base/metrics/dummy_histogram.h
+@@ -0,0 +1,61 @@
++// Copyright 2017 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef BASE_METRICS_DUMMY_HISTOGRAM_H_
++#define BASE_METRICS_DUMMY_HISTOGRAM_H_
++
++#include <stdint.h>
++
++#include <memory>
++#include <string>
++
++#include "base/base_export.h"
++#include "base/metrics/histogram_base.h"
++#include "base/no_destructor.h"
++
++namespace base {
++
++// DummyHistogram is used for mocking histogram objects for histograms that
++// shouldn't be recorded. It doesn't do any actual processing.
++class BASE_EXPORT DummyHistogram : public HistogramBase {
++ public:
++  static DummyHistogram* GetInstance();
++
++  // HistogramBase:
++  void CheckName(const StringPiece& name) const override {}
++  uint64_t name_hash() const override;
++  HistogramType GetHistogramType() const override;
++  bool HasConstructionArguments(Sample expected_minimum,
++                                Sample expected_maximum,
++                                uint32_t expected_bucket_count) const override;
++  void Add(Sample value) override {}
++  void AddCount(Sample value, int count) override {}
++  void AddSamples(const HistogramSamples& samples) override {}
++  bool AddSamplesFromPickle(PickleIterator* iter) override;
++  std::unique_ptr<HistogramSamples> SnapshotSamples() const override;
++  std::unique_ptr<HistogramSamples> SnapshotDelta() override;
++  std::unique_ptr<HistogramSamples> SnapshotFinalDelta() const override;
++  void WriteHTMLGraph(std::string* output) const override {}
++  void WriteAscii(std::string* output) const override {}
++
++ protected:
++  // HistogramBase:
++  void SerializeInfoImpl(Pickle* pickle) const override {}
++  void GetParameters(DictionaryValue* params) const override {}
++  void GetCountAndBucketData(Count* count,
++                             int64_t* sum,
++                             ListValue* buckets) const override {}
++
++ private:
++  friend class NoDestructor<DummyHistogram>;
++
++  DummyHistogram() : HistogramBase("dummy_histogram") {}
++  ~DummyHistogram() override {}
++
++  DISALLOW_COPY_AND_ASSIGN(DummyHistogram);
++};
++
++}  // namespace base
++
++#endif  // BASE_METRICS_DUMMY_HISTOGRAM_H_
+diff --git a/base/metrics/histogram.cc b/base/metrics/histogram.cc
+index 91d1a78..5960905 100644
+--- a/base/metrics/histogram.cc
++++ b/base/metrics/histogram.cc
+@@ -21,6 +21,7 @@
+ #include "base/debug/alias.h"
+ #include "base/logging.h"
+ #include "base/memory/ptr_util.h"
++#include "base/metrics/dummy_histogram.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/metrics_hashes.h"
+ #include "base/metrics/persistent_histogram_allocator.h"
+@@ -75,6 +76,11 @@
  
- import("//build/config/sanitizers/sanitizers.gni")
-+import("//build/config/sysroot.gni")
- import("//build/config/ui.gni")
- import("//build/util/process_version.gni")
- import("//extensions/buildflags/buildflags.gni")
-@@ -10,8 +11,9 @@
- assert(enable_extensions)
+ bool ValidateRangeChecksum(const HistogramBase& histogram,
+                            uint32_t range_checksum) {
++  // Normally, |histogram| should have type HISTOGRAM or be inherited from it.
++  // However, if it's expired, it will actually be a DUMMY_HISTOGRAM.
++  // Skip the checks in that case.
++  if (histogram.GetHistogramType() == DUMMY_HISTOGRAM)
++    return true;
+   const Histogram& casted_histogram =
+       static_cast<const Histogram&>(histogram);
  
- declare_args() {
--  enable_app_shell_installer = is_desktop_linux && current_cpu == "x64" &&
--                               !is_component_build && !using_sanitizer
-+  enable_app_shell_installer =
-+      is_desktop_linux && current_cpu == "x64" && !is_component_build &&
-+      use_sysroot && !using_sanitizer
+@@ -152,6 +158,12 @@
+ HistogramBase* Histogram::Factory::Build() {
+   HistogramBase* histogram = StatisticsRecorder::FindHistogram(name_);
+   if (!histogram) {
++    // TODO(gayane): |HashMetricName()| is called again in Histogram
++    // constructor. Refactor code to avoid the additional call.
++    bool should_record =
++        StatisticsRecorder::ShouldRecordHistogram(HashMetricName(name_));
++    if (!should_record)
++      return DummyHistogram::GetInstance();
+     // To avoid racy destruction at shutdown, the following will be leaked.
+     const BucketRanges* created_ranges = CreateRanges();
+     const BucketRanges* registered_ranges =
+@@ -807,6 +819,11 @@
+ 
+   void FillHistogram(HistogramBase* base_histogram) override {
+     Histogram::Factory::FillHistogram(base_histogram);
++    // Normally, |base_histogram| should have type LINEAR_HISTOGRAM or be
++    // inherited from it. However, if it's expired, it will actually be a
++    // DUMMY_HISTOGRAM. Skip filling in that case.
++    if (base_histogram->GetHistogramType() == DUMMY_HISTOGRAM)
++      return;
+     LinearHistogram* histogram = static_cast<LinearHistogram*>(base_histogram);
+     // Set range descriptions.
+     if (descriptions_) {
+diff --git a/base/metrics/histogram_base.cc b/base/metrics/histogram_base.cc
+index 868e0cb..d8ae483 100644
+--- a/base/metrics/histogram_base.cc
++++ b/base/metrics/histogram_base.cc
+@@ -39,6 +39,8 @@
+       return "CUSTOM_HISTOGRAM";
+     case SPARSE_HISTOGRAM:
+       return "SPARSE_HISTOGRAM";
++    case DUMMY_HISTOGRAM:
++      return "DUMMY_HISTOGRAM";
+   }
+   NOTREACHED();
+   return "UNKNOWN";
+diff --git a/base/metrics/histogram_base.h b/base/metrics/histogram_base.h
+index ab8a1b8..1971a65 100644
+--- a/base/metrics/histogram_base.h
++++ b/base/metrics/histogram_base.h
+@@ -39,6 +39,7 @@
+   BOOLEAN_HISTOGRAM,
+   CUSTOM_HISTOGRAM,
+   SPARSE_HISTOGRAM,
++  DUMMY_HISTOGRAM,
+ };
+ 
+ // Controls the verbosity of the information when the histogram is serialized to
+@@ -150,10 +151,10 @@
+ 
+   const char* histogram_name() const { return histogram_name_; }
+ 
+-  // Comapres |name| to the histogram name and triggers a DCHECK if they do not
++  // Compares |name| to the histogram name and triggers a DCHECK if they do not
+   // match. This is a helper function used by histogram macros, which results in
+   // in more compact machine code being generated by the macros.
+-  void CheckName(const StringPiece& name) const;
++  virtual void CheckName(const StringPiece& name) const;
+ 
+   // Get a unique ID for this histogram's samples.
+   virtual uint64_t name_hash() const = 0;
+diff --git a/base/metrics/histogram_samples.h b/base/metrics/histogram_samples.h
+index 23237b0..6908873c 100644
+--- a/base/metrics/histogram_samples.h
++++ b/base/metrics/histogram_samples.h
+@@ -199,6 +199,9 @@
+   Metadata* meta() { return meta_; }
+ 
+  private:
++  // Depending on derived class meta values can come from local stoarge or
++  // external storage in which case HistogramSamples class cannot take ownership
++  // of Metadata*.
+   Metadata* meta_;
+ 
+   DISALLOW_COPY_AND_ASSIGN(HistogramSamples);
+diff --git a/base/metrics/histogram_unittest.cc b/base/metrics/histogram_unittest.cc
+index c824eb7..97e7ad3 100644
+--- a/base/metrics/histogram_unittest.cc
++++ b/base/metrics/histogram_unittest.cc
+@@ -16,8 +16,10 @@
+ #include "base/logging.h"
+ #include "base/metrics/bucket_ranges.h"
+ #include "base/metrics/histogram_macros.h"
++#include "base/metrics/metrics_hashes.h"
+ #include "base/metrics/persistent_histogram_allocator.h"
+ #include "base/metrics/persistent_memory_allocator.h"
++#include "base/metrics/record_histogram_checker.h"
+ #include "base/metrics/sample_vector.h"
+ #include "base/metrics/statistics_recorder.h"
+ #include "base/pickle.h"
+@@ -27,6 +29,22 @@
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+ namespace base {
++namespace {
++
++const char kExpiredHistogramName[] = "ExpiredHistogram";
++
++// Test implementation of RecordHistogramChecker interface.
++class TestRecordHistogramChecker : public RecordHistogramChecker {
++ public:
++  ~TestRecordHistogramChecker() override = default;
++
++  // RecordHistogramChecker:
++  bool ShouldRecord(uint64_t histogram_hash) const override {
++    return histogram_hash != HashMetricName(kExpiredHistogramName);
++  }
++};
++
++}  // namespace
+ 
+ // Test parameter indicates if a persistent memory allocator should be used
+ // for histogram allocation. False will allocate histograms from the process
+@@ -58,6 +76,8 @@
+   void InitializeStatisticsRecorder() {
+     DCHECK(!statistics_recorder_);
+     statistics_recorder_ = StatisticsRecorder::CreateTemporaryForTesting();
++    auto record_checker = std::make_unique<TestRecordHistogramChecker>();
++    StatisticsRecorder::SetRecordChecker(std::move(record_checker));
+   }
+ 
+   void UninitializeStatisticsRecorder() {
+@@ -769,4 +789,57 @@
+                "");
  }
  
- # Meta-target that forwards to the installer of the correct type (if any).
++TEST_P(HistogramTest, ExpiredHistogramTest) {
++  HistogramBase* expired = Histogram::FactoryGet(kExpiredHistogramName, 1, 1000,
++                                                 10, HistogramBase::kNoFlags);
++  ASSERT_TRUE(expired);
++  expired->Add(5);
++  expired->Add(500);
++  auto samples = expired->SnapshotDelta();
++  EXPECT_EQ(0, samples->TotalCount());
++
++  HistogramBase* linear_expired = LinearHistogram::FactoryGet(
++      kExpiredHistogramName, 1, 1000, 10, HistogramBase::kNoFlags);
++  ASSERT_TRUE(linear_expired);
++  linear_expired->Add(5);
++  linear_expired->Add(500);
++  samples = linear_expired->SnapshotDelta();
++  EXPECT_EQ(0, samples->TotalCount());
++
++  std::vector<int> custom_ranges;
++  custom_ranges.push_back(1);
++  custom_ranges.push_back(5);
++  HistogramBase* custom_expired = CustomHistogram::FactoryGet(
++      kExpiredHistogramName, custom_ranges, HistogramBase::kNoFlags);
++  ASSERT_TRUE(custom_expired);
++  custom_expired->Add(2);
++  custom_expired->Add(4);
++  samples = custom_expired->SnapshotDelta();
++  EXPECT_EQ(0, samples->TotalCount());
++
++  HistogramBase* valid = Histogram::FactoryGet("ValidHistogram", 1, 1000, 10,
++                                               HistogramBase::kNoFlags);
++  ASSERT_TRUE(valid);
++  valid->Add(5);
++  valid->Add(500);
++  samples = valid->SnapshotDelta();
++  EXPECT_EQ(2, samples->TotalCount());
++
++  HistogramBase* linear_valid = LinearHistogram::FactoryGet(
++      "LinearHistogram", 1, 1000, 10, HistogramBase::kNoFlags);
++  ASSERT_TRUE(linear_valid);
++  linear_valid->Add(5);
++  linear_valid->Add(500);
++  samples = linear_valid->SnapshotDelta();
++  EXPECT_EQ(2, samples->TotalCount());
++
++  HistogramBase* custom_valid = CustomHistogram::FactoryGet(
++      "CustomHistogram", custom_ranges, HistogramBase::kNoFlags);
++  ASSERT_TRUE(custom_valid);
++  custom_valid->Add(2);
++  custom_valid->Add(4);
++  samples = custom_valid->SnapshotDelta();
++  EXPECT_EQ(2, samples->TotalCount());
++}
++
+ }  // namespace base
+diff --git a/base/metrics/sparse_histogram.cc b/base/metrics/sparse_histogram.cc
+index e33fd3c..30175a0 100644
+--- a/base/metrics/sparse_histogram.cc
++++ b/base/metrics/sparse_histogram.cc
+@@ -7,6 +7,7 @@
+ #include <utility>
+ 
+ #include "base/memory/ptr_util.h"
++#include "base/metrics/dummy_histogram.h"
+ #include "base/metrics/metrics_hashes.h"
+ #include "base/metrics/persistent_histogram_allocator.h"
+ #include "base/metrics/persistent_sample_map.h"
+@@ -26,6 +27,12 @@
+                                            int32_t flags) {
+   HistogramBase* histogram = StatisticsRecorder::FindHistogram(name);
+   if (!histogram) {
++    // TODO(gayane): |HashMetricName| is called again in Histogram constructor.
++    // Refactor code to avoid the additional call.
++    bool should_record =
++        StatisticsRecorder::ShouldRecordHistogram(HashMetricName(name));
++    if (!should_record)
++      return DummyHistogram::GetInstance();
+     // Try to create the histogram using a "persistent" allocator. As of
+     // 2016-02-25, the availability of such is controlled by a base::Feature
+     // that is off by default. If the allocator doesn't exist or if
+diff --git a/base/metrics/statistics_recorder.h b/base/metrics/statistics_recorder.h
+index 03651a9..87a9311 100644
+--- a/base/metrics/statistics_recorder.h
++++ b/base/metrics/statistics_recorder.h
+@@ -200,9 +200,6 @@
+   // method must be called very early, before any threads have started.
+   // Record checker methods can be called on any thread, so they shouldn't
+   // mutate any state.
+-  //
+-  // TODO(iburak): This is not yet hooked up to histogram recording
+-  // infrastructure.
+   static void SetRecordChecker(
+       std::unique_ptr<RecordHistogramChecker> record_checker);
+ 
