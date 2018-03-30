@@ -1,22 +1,13 @@
-diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 498aff5..8b8a6a9 100644
---- a/chrome/browser/BUILD.gn
-+++ b/chrome/browser/BUILD.gn
-@@ -3475,8 +3475,6 @@
-       "renderer_context_menu/context_menu_content_type_platform_app.h",
-       "renderer_host/chrome_extension_message_filter.cc",
-       "renderer_host/chrome_extension_message_filter.h",
--      "signin/chrome_proximity_auth_client.cc",
--      "signin/chrome_proximity_auth_client.h",
-       "speech/extension_api/tts_engine_extension_api.cc",
-       "speech/extension_api/tts_engine_extension_api.h",
-       "speech/extension_api/tts_engine_extension_observer.cc",
-@@ -3625,6 +3623,8 @@
+--- a/components/policy/core/common/cloud/cloud_policy_util.cc	
+2018-03-30 19:17:41.351656329 -0400
++++ b/components/policy/core/common/cloud/cloud_policy_util.cc.new	
+2018-03-30 19:29:48.453288085 -0400
+@@ -6,6 +6,8 @@
  
-     if (is_chromeos) {
-       sources += [
-+        "signin/chrome_proximity_auth_client.cc",
-+        "signin/chrome_proximity_auth_client.h",
-         "signin/easy_unlock_app_manager.cc",
-         "signin/easy_unlock_app_manager.h",
-         "signin/easy_unlock_auth_attempt.cc",
+ #include "build/build_config.h"
+ 
++#include <limits.h>  // for HOST_NAME_MAX
++
+ #if defined(OS_WIN)
+ #include <Windows.h>  // For GetComputerNameW()
+ #endif

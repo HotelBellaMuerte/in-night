@@ -1,10 +1,10 @@
---- a/tools/gn/bootstrap/bootstrap.py	2018-02-23 14:04:10.304532371 -0400
-+++ b/tools/gn/bootstrap/bootstrap.py.new	2018-02-23 14:21:53.123843268 -0400
-@@ -557,7 +557,6 @@
-       'base/threading/scoped_blocking_call.cc',
-       'base/threading/sequence_local_storage_map.cc',
-       'base/threading/sequenced_task_runner_handle.cc',
--      'base/threading/sequenced_worker_pool.cc',
-       'base/threading/simple_thread.cc',
-       'base/threading/thread.cc',
-       'base/threading/thread_checker_impl.cc',
+--- a/chrome/browser/BUILD.gn	2017-10-04 18:07:33.000000000 -0400
++++ b/chrome/browser/BUILD.gn	2017-10-09 15:12:59.031476033 -0400
+@@ -1514,6 +1514,7 @@
+     "//content/public/browser",
+     "//ipc",
+     "//sql",
++    "//chrome/common:service_process_mojom",
+   ]
+   deps = [
+     ":active_use_util",

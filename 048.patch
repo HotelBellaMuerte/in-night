@@ -1,18 +1,21 @@
---- a/base/tracked_objects.cc
-+++ b/base/tracked_objects.cc
-@@ -897,10 +897,14 @@ void ThreadData::EnsureTlsInitialization
-   // never again change in this process.
-   ++incarnation_counter_;
- 
-+  ThreadData::Status initial_startup_state = DEACTIVATED;
-+  if (base::CommandLine::ForCurrentProcess()->HasSwitch("enable-profiler"))
-+    initial_startup_state = kInitialStartupState;
-+
-   // The lock is not critical for setting status_, but it doesn't hurt.  It also
-   // ensures that if we have a racy initialization, that we'll bail as soon as
-   // we get the lock earlier in this method.
--  base::subtle::Release_Store(&status_, kInitialStartupState);
-+  base::subtle::Release_Store(&status_, initial_startup_state);
-   DCHECK(base::subtle::NoBarrier_Load(&status_) != UNINITIALIZED);
- }
- 
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 6e82635..75d7d5c 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1579,6 +1579,7 @@
+     "//content/public/browser",
+     "//ipc",
+     "//sql",
++    "//chrome/common:service_process_mojom",
+   ]
+   deps = [
+     ":active_use_util",
+@@ -3136,8 +3137,6 @@
+       "notifications/screen_lock_notification_blocker.cc",
+       "notifications/screen_lock_notification_blocker.h",
+       "platform_util.cc",
+-      "policy/cloud/machine_level_user_cloud_policy_helper.cc",
+-      "policy/cloud/machine_level_user_cloud_policy_helper.h",
+       "policy/cloud/user_policy_signin_service.cc",
+       "policy/cloud/user_policy_signin_service.h",
+       "profiles/avatar_menu.cc",
