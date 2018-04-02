@@ -1,13 +1,173 @@
---- a/components/policy/core/common/cloud/cloud_policy_util.cc	
-2018-03-30 19:17:41.351656329 -0400
-+++ b/components/policy/core/common/cloud/cloud_policy_util.cc.new	
-2018-03-30 19:29:48.453288085 -0400
-@@ -6,6 +6,8 @@
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+index 686f25d..d61370b 100644
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -1808,6 +1808,7 @@
+     "ENABLE_PROFILING=$enable_profiling",
+     "CAN_UNWIND_WITH_FRAME_POINTERS=$can_unwind_with_frame_pointers",
+     "UNSAFE_DEVELOPER_BUILD=$is_unsafe_developer_build",
++    "CAN_UNWIND_WITH_CFI_TABLE=$can_unwind_with_cfi_table",
+   ]
+ }
  
- #include "build/build_config.h"
- 
-+#include <limits.h>  // for HOST_NAME_MAX
+diff --git a/base/trace_event/heap_profiler_allocation_context_tracker.cc b/base/trace_event/heap_profiler_allocation_context_tracker.cc
+index a375d3b..eb5f128 100644
+--- a/base/trace_event/heap_profiler_allocation_context_tracker.cc
++++ b/base/trace_event/heap_profiler_allocation_context_tracker.cc
+@@ -15,6 +15,11 @@
+ #include "base/threading/platform_thread.h"
+ #include "base/threading/thread_local_storage.h"
+ #include "base/trace_event/heap_profiler_allocation_context.h"
++#include "build/build_config.h"
 +
- #if defined(OS_WIN)
- #include <Windows.h>  // For GetComputerNameW()
++#if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE)
++#include "base/trace_event/cfi_backtrace_android.h"
++#endif
+ 
+ #if defined(OS_LINUX) || defined(OS_ANDROID)
+ #include <sys/prctl.h>
+@@ -214,20 +219,26 @@
+ // kMaxFrameCount + 1 frames, so that we know if there are more frames
+ // than our backtrace capacity.
+ #if !defined(OS_NACL)  // We don't build base/debug/stack_trace.cc for NaCl.
+-#if BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
++#if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE)
++        const void* frames[Backtrace::kMaxFrameCount + 1];
++        static_assert(arraysize(frames) >= Backtrace::kMaxFrameCount,
++                      "not requesting enough frames to fill Backtrace");
++        size_t frame_count = CFIBacktraceAndroid::GetInstance()->Unwind(
++            frames, arraysize(frames));
++#elif BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
+         const void* frames[Backtrace::kMaxFrameCount + 1];
+         static_assert(arraysize(frames) >= Backtrace::kMaxFrameCount,
+                       "not requesting enough frames to fill Backtrace");
+         size_t frame_count = debug::TraceStackFramePointers(
+             frames, arraysize(frames),
+             1 /* exclude this function from the trace */);
+-#else   // BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
++#else
+         // Fall-back to capturing the stack with base::debug::StackTrace,
+         // which is likely slower, but more reliable.
+         base::debug::StackTrace stack_trace(Backtrace::kMaxFrameCount + 1);
+         size_t frame_count = 0u;
+         const void* const* frames = stack_trace.Addresses(&frame_count);
+-#endif  // BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)
++#endif
+ 
+         // If there are too many frames, keep the ones furthest from main().
+         size_t backtrace_capacity = backtrace_end - backtrace;
+diff --git a/base/trace_event/memory_dump_manager.cc b/base/trace_event/memory_dump_manager.cc
+index 71f4ce4..2514536 100644
+--- a/base/trace_event/memory_dump_manager.cc
++++ b/base/trace_event/memory_dump_manager.cc
+@@ -41,8 +41,13 @@
+ 
+ #if defined(OS_ANDROID)
+ #include "base/trace_event/java_heap_dump_provider_android.h"
++
++#if BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE)
++#include "base/trace_event/cfi_backtrace_android.h"
  #endif
+ 
++#endif  // defined(OS_ANDROID)
++
+ namespace base {
+ namespace trace_event {
+ 
+@@ -273,8 +278,15 @@
+       break;
+ 
+     case kHeapProfilingModeNative:
+-      // If we don't have frame pointers then native tracing falls-back to
+-      // using base::debug::StackTrace, which may be slow.
++#if defined(OS_ANDROID) && BUILDFLAG(CAN_UNWIND_WITH_CFI_TABLE)
++    {
++      bool can_unwind =
++          CFIBacktraceAndroid::GetInstance()->can_unwind_stack_frames();
++      DCHECK(can_unwind);
++    }
++#endif
++      // If we don't have frame pointers and unwind tables then native tracing
++      // falls-back to using base::debug::StackTrace, which may be slow.
+       AllocationContextTracker::SetCaptureMode(
+           AllocationContextTracker::CaptureMode::NATIVE_STACK);
+       break;
+diff --git a/build/config/android/extract_unwind_tables.gni b/build/config/android/extract_unwind_tables.gni
+index 70f2d33..38035b9 100644
+--- a/build/config/android/extract_unwind_tables.gni
++++ b/build/config/android/extract_unwind_tables.gni
+@@ -31,11 +31,11 @@
+       "--dump_syms_path",
+       rebase_path("$root_out_dir/dump_syms", root_build_dir),
+     ]
+-    deps = [
+-      ":${invoker.library_target}",
+-      "//third_party/breakpad:dump_syms",
+-    ]
++
++    deps = invoker.deps
++    deps += [ "//third_party/breakpad:dump_syms" ]
+   }
++
+   android_assets(target_name) {
+     if (defined(invoker.testonly)) {
+       testonly = invoker.testonly
+diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index 6fe4f60..f85dde7 100644
+--- a/chrome/android/BUILD.gn
++++ b/chrome/android/BUILD.gn
+@@ -21,6 +21,7 @@
+ import("channel.gni")
+ import("java_sources.gni")
+ import("static_initializers.gni")
++import("//build/config/android/extract_unwind_tables.gni")
+ 
+ manifest_package = "org.chromium.chrome"
+ 
+@@ -733,6 +734,22 @@
+   }
+ }
+ 
++# Enable stack unwinding only for local official builds. Enabling on all local
++# builds would increase build time for developers. Choosing a release channel
++# should be done based on the size of the unwind file and performance of
++# unwinding.
++_add_unwind_tables_in_apk = can_unwind_with_cfi_table && is_android &&
++                            is_official_build && android_channel == "default"
++
++if (_add_unwind_tables_in_apk) {
++  unwind_table_asset("chrome_public_unwind_assets") {
++    library_target = "chrome"
++    deps = [
++      ":libchrome",
++    ]
++  }
++}
++
+ android_assets("chrome_public_pak_assets") {
+   sources = [
+     "$root_out_dir/chrome_100_percent.pak",
+@@ -744,6 +761,9 @@
+     ":chrome_public_locale_pak_assets",
+     "//chrome:packed_resources",
+   ]
++  if (_add_unwind_tables_in_apk) {
++    deps += [ ":chrome_public_unwind_assets" ]
++  }
+ }
+ 
+ # This target is separate from chrome_public_pak_assets because it does not
+diff --git a/testing/test.gni b/testing/test.gni
+index 251b003..0f92985 100644
+--- a/testing/test.gni
++++ b/testing/test.gni
+@@ -110,6 +110,9 @@
+         unwind_table_asset(_unwind_table_asset_name) {
+           testonly = true
+           library_target = _library_target
++          deps = [
++            ":$_library_target",
++          ]
+         }
+       }
+ 
