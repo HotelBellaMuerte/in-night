@@ -1,8 +1,6 @@
-diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 6e82635..75d7d5c 100644
---- a/chrome/browser/BUILD.gn
-+++ b/chrome/browser/BUILD.gn
-@@ -1579,6 +1579,7 @@
+--- a/chrome/browser/BUILD.gn	2017-10-04 18:07:33.000000000 -0400
++++ b/chrome/browser/BUILD.gn	2017-10-09 15:12:59.031476033 -0400
+@@ -1514,6 +1514,7 @@
      "//content/public/browser",
      "//ipc",
      "//sql",
@@ -10,12 +8,3 @@ index 6e82635..75d7d5c 100644
    ]
    deps = [
      ":active_use_util",
-@@ -3136,8 +3137,6 @@
-       "notifications/screen_lock_notification_blocker.cc",
-       "notifications/screen_lock_notification_blocker.h",
-       "platform_util.cc",
--      "policy/cloud/machine_level_user_cloud_policy_helper.cc",
--      "policy/cloud/machine_level_user_cloud_policy_helper.h",
-       "policy/cloud/user_policy_signin_service.cc",
-       "policy/cloud/user_policy_signin_service.h",
-       "profiles/avatar_menu.cc",
