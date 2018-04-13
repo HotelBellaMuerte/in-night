@@ -15,7 +15,7 @@
  
 --- a/chrome/app/chromium_strings.grd
 +++ b/chrome/app/chromium_strings.grd
-@@ -130,10 +130,10 @@ If you update this file, be sure also to
+@@ -130,10 +130,10 @@
          Disconnecting <ph name="USERNAME">$1<ex>someone@example.com</ex></ph> will clear your history, bookmarks, settings, and other Chromium data stored on this device. Data stored in your Google Account will not be cleared and can be managed on <ph name="GOOGLE_DASHBOARD_LINK">&lt;a target="_blank" href="$2"&gt;</ph>Google Dashboard<ph name="END_GOOGLE_DASHBOARD_LINK">&lt;/a&gt;</ph>.
        </message>
        <message name="IDS_PRODUCT_NAME" desc="The Chrome application name">
@@ -28,16 +28,16 @@
        </message>
        <if expr="is_win">
          <message name="IDS_SXS_SHORTCUT_NAME" desc="Unused in Chromium builds" translateable="false">
-@@ -143,7 +143,7 @@ If you update this file, be sure also to
+@@ -143,7 +143,7 @@
          <message name="IDS_SHORTCUT_NAME_DEV" desc="Unused in Chromium builds" translateable="false">
          </message>
          <message name="IDS_PRODUCT_DESCRIPTION" desc="Browser description">
 -          Chromium is a web browser that runs webpages and applications with lightning speed. It's fast, stable, and easy to use. Browse the web more safely with malware and phishing protection built into Chromium.
-+          Enox is a free, open, and libre browser modification of the Chromium code base, with privacy being enhanced in several key areas. Automatic transmission of partial queries, keywords, metrics to central services inhibited and only occurs with consent. In addition, all our builds are reproducible, and modifications are auditable, setting the project ahead of other secure browser providers.
++          Enox is a web browser that runs webpages and applications with lightning speed. It's fast, stable, and easy to use. Browse the web more safely with malware and phishing protection built into Chromium.
          </message>
        </if>
        <if expr="chromeos">
-@@ -166,7 +166,7 @@ If you update this file, be sure also to
+@@ -166,7 +166,7 @@
          sign in to Chromium
        </message>
        <message name="IDS_TASK_MANAGER_TITLE" desc="The title of the Task Manager window">
@@ -46,7 +46,7 @@
        </message>
        <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
          Help make Chromium better by sending crash reports and <ph name="UMA_LINK">$1<ex>usage statistics</ex></ph> to Google
-@@ -174,7 +174,7 @@ If you update this file, be sure also to
+@@ -174,7 +174,7 @@
        <if expr="not chromeos">
          <!-- Browser Window Title Format -->
          <message name="IDS_BROWSER_WINDOW_TITLE_FORMAT" desc="The format for titles displayed in tabs and popup windows">
@@ -55,16 +55,16 @@
          </message>
        </if>
        <if expr="chromeos">
-@@ -299,7 +299,7 @@ If you update this file, be sure also to
-       </if>
-       <if expr="not chromeos">
-         <message name="IDS_OPTIONS_RELAUNCH_REQUIRED" desc="The message displayed for an option that requires a relaunch to take effect. This appears in a message box if an option is changed that requires a relaunch.">
--          Please close all Chromium windows and relaunch Chromium for this change to take effect.
-+          Please close all Bnox windows and relaunch Enox for this change to take effect.
+@@ -249,7 +249,7 @@
+       <!-- Uninstall messages -->
+       <if expr="is_win">
+         <message name="IDS_UNINSTALL_CLOSE_APP" desc="Message to user when uninstall detects other app instance running">
+-          Please close all Chromium windows and try again.
++          Please close all Enox windows and try again.
          </message>
-       </if>
-       <if expr="chromeos">
-@@ -649,7 +649,7 @@ Chromium is unable to recover your setti
+         <message name="IDS_UNINSTALL_VERIFY" desc="Message to confirm user wants to uninstall">
+           Are you sure you want to uninstall Chromium?
+@@ -602,7 +602,7 @@
  
        <if expr="use_titlecase and not chromeos">
          <message name="IDS_ABOUT" desc="In Title Case: The text label of the About Chrome menu item">
@@ -73,7 +73,7 @@
          </message>
          <message name="IDS_UPDATE_NOW" desc="In Title Case: The text label of the Update Chrome Now menu item">
            Update &amp;Chromium
-@@ -657,7 +657,7 @@ Chromium is unable to recover your setti
+@@ -610,7 +610,7 @@
        </if>
        <if expr="not use_titlecase and not chromeos">
          <message name="IDS_ABOUT" desc="The text label of the About Chrome menu item">
@@ -82,7 +82,7 @@
          </message>
          <message name="IDS_UPDATE_NOW" desc="The text label of the Update Chrome Now menu item">
            Update &amp;Chromium
-@@ -674,7 +674,7 @@ Chromium is unable to recover your setti
+@@ -627,7 +627,7 @@
  
        <if expr="is_macosx">
          <message name="IDS_APP_MENU_PRODUCT_NAME" desc="The application's short name, used for the Mac's application menu, activity monitor, etc. This should be less than 16 characters. Example: Chrome, not Google Chrome.">

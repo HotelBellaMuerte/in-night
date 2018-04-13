@@ -2,7 +2,7 @@
 2018-04-10 12:49:19.136800802 -0400
 +++ b/chrome/browser/media/router/media_router_feature.cc	
 2018-04-10 12:55:38.039057728 -0400
-@@ -11,26 +11,26 @@
+@@ -11,26 +11,25 @@
  #include "extensions/buildflags/buildflags.h"
  #include "ui/base/ui_features.h"
  
@@ -23,7 +23,6 @@
  namespace media_router {
  
 -#if !defined(OS_ANDROID)
-+
  // Controls if browser side DIAL sink query is enabled.
  const base::Feature kEnableDialSinkQuery{"EnableDialSinkQuery",
                                           base::FEATURE_DISABLED_BY_DEFAULT};
@@ -35,10 +34,10 @@
  
  const base::Feature kCastMediaRouteProvider{"CastMediaRouteProvider",
                                              base::FEATURE_DISABLED_BY_DEFAULT};
-@@ -38,9 +38,9 @@
+@@ -38,9 +37,9 @@
  // Controls if local media casting is enabled.
  const base::Feature kEnableCastLocalMedia{"EnableCastLocalMedia",
-                                           base::FEATURE_DISABLED_BY_DEFAULT};
+                                           base::FEATURE_ENABLED_BY_DEFAULT};
 -#endif
  
 -#if defined(OS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS)
@@ -47,7 +46,7 @@
  namespace {
  const PrefService::Preference* GetMediaRouterPref(
      content::BrowserContext* context) {
-@@ -48,10 +48,10 @@
+@@ -48,10 +47,9 @@
        ::prefs::kEnableMediaRouter);
  }
  }  // namespace
@@ -56,11 +55,10 @@
  
  bool MediaRouterEnabled(content::BrowserContext* context) {
 -#if defined(OS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS)
-+
    const PrefService::Preference* pref = GetMediaRouterPref(context);
    // Only use the pref value if it set from a mandatory policy.
    if (pref->IsManaged() && !pref->IsDefaultValue()) {
-@@ -62,13 +62,10 @@
+@@ -62,13 +60,9 @@
  
    // The component extension cannot be loaded in guest sessions.
    // TODO(crbug.com/756243): Figure out why.
@@ -71,11 +69,10 @@
  }
  
 -#if !defined(OS_ANDROID)
-+
  void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
    registry->RegisterBooleanPref(prefs::kMediaRouterCastAllowAllIPs, false,
                                  PrefRegistry::PUBLIC);
-@@ -113,12 +110,7 @@
+@@ -113,12 +107,7 @@
  // Returns true if the presentation receiver window for local media casting is
  // available on the current platform.
  bool PresentationReceiverWindowEnabled() {
