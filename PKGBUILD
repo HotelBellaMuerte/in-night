@@ -4,125 +4,122 @@
 # Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
 
-pkgname=inox-edgy
-pk=enox
+pkgname=inox-dev
+pk=dnox
 name=chromium
-pkgver=66.0.3353.0
+pkgver=64.0.3282.12
 pkgrel=1
 _launcher_ver=5
-pkgdesc="A web browser built for speed, simplicity, and security always nightly"
+pkgdesc="A web browser built for speed, simplicity, and security"
 arch=('i686' 'x86_64')
 url="https://www.chromium.org/Home"
 license=('BSD')
 depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
          'ttf-font' 'systemd' 'dbus' 'libpulse' 'pciutils' 'json-glib'
          'desktop-file-utils' 'hicolor-icon-theme')
-makedepends=('python2' 'gperf' 'yasm' 'mesa' 'ninja' 'nodejs' 'git' 'atk' 'at-spi2-atk')
+makedepends=('python2' 'gperf' 'yasm' 'mesa' 'ninja' 'nodejs' 'git')
 optdepends=('pepper-flash: support for Flash content'
             'kdialog: needed for file dialogs in KDE'
             'gnome-keyring: for storing passwords in GNOME keyring'
             'kwallet: for storing passwords in KWallet')
-install=inox-edgy.install
+install=inox-dev.install
 source=(https://commondatastorage.googleapis.com/chromium-browser-official/$name-$pkgver.tar.xz
         chromium-launcher-$_launcher_ver.tar.gz::https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver.tar.gz
-        https://raw.githubusercontent.com/bn0785ac/in-night/master/enox.desktop
-        https://raw.githubusercontent.com/bn0785ac/in-night/master/breakpad-use-ucontext_t.patch
-        https://raw.githubusercontent.com/bn0785ac/in-night/master/crc32c-string-view-check.patch
-        https://raw.githubusercontent.com/bn0785ac/in-night/master/chromium-gn-bootstrap-r17.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/001.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/002.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/004.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/005.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/006.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/007.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/008.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/009.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/010.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/011.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/012.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/013.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/014.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/015.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/016.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kb.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/018.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/k1.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/019.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/020.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/021.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/022.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/023.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/024.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/025.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/026.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/027.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/029.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/030.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/031.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/032.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/034.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/035.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/360.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/037.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/038.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/12.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/16.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/20.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/9k.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/048.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/gna.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/gnb.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/3992.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2992.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2ka.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/product_logo_{16,22,24,32,48,64,128,256}.png
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kc.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kd.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2ke.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kf.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kg.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2kh.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/2ki.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/na.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/nb.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/nc.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/nd.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/a.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/b.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/c.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/d.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/e.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/k.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/l.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/l2.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/l3.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/m.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/n.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/o.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/p.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/r21.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/bp.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/CP.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/888.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/narnia1.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/meme.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/p1.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/p2.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/e3.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/pt.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/edgy.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/k2.patch
-https://raw.githubusercontent.com/bn0785ac/in-night/master/desu.patch
+        https://raw.githubusercontent.com/bn0785ac/in-dev/master/dnox.desktop
+        https://raw.githubusercontent.com/bn0785ac/in-dev/master/breakpad-use-ucontext_t.patch
+        https://raw.githubusercontent.com/bn0785ac/in-dev/master/crc32c-string-view-check.patch
+        https://raw.githubusercontent.com/bn0785ac/in-dev/master/chromium-gn-bootstrap-r17.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/001.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/002.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/004.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/005.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/006.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/007.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/008.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/009.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/010.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/011.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/012.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/013.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/014.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/015.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/016.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kb.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/018.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/k1.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/019.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/020.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/021.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/022.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/023.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/024.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/025.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/026.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/027.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/029.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/030.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/031.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/032.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/034.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/035.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/360.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/037.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/038.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/12.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/16.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/20.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/9k.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/048.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/gna.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/gnb.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/3992.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2992.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2ka.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/product_logo_{16,22,24,32,48,64,128,256}.png
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kc.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kd.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2ke.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kf.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kg.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2kh.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/2ki.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/na.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/nb.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/nc.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/nd.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/a.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/b.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/c.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/d.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/e.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/k.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/l.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/l2.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/l3.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/m.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/n.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/o.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/p.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/r21.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/bp.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/CP.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/888.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/narnia1.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/meme.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/p1.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/p2.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/e3.patch
+https://raw.githubusercontent.com/bn0785ac/in-dev/master/pt.patch
 )
 
 
-sha256sums=('0e5047b33fadb07cf91bbdb447ea3d553f241dbffcd7af632fe334047b12210b'
+sha256sums=('afc82b37e923f87bbe08e2928b861e4d86f1a35d4b4da19229f53ec687c0a189'
             '4dc3428f2c927955d9ae117f2fb24d098cc6dd67adb760ac9c82b522ec8b0587'
-            '2d33f3b42c0e48de5044548fe885ea351f66a60f3164b700721af8bf200243eb'
+            'f636b4f57c85634a40f2bdf66bcd7080a730a088a791d8dbf54c7f8c14d6d6af'
             '6e9a345f810d36068ee74ebba4708c70ab30421dad3571b6be5e9db635078ea8'
             '35435e8dae76737baafecdc76d74a1c97281c4179e416556e033a06a31468e6d'
             'd81319f168dad0e411c8e810f73daa2f56ff579578771bd9c9bb1aa2d7c09a8b'
-            'ecd1cf05b2c41e608aaeda9ca4fe8d6c698c09455d73bba73c7efccac44cdbcb'
+            '2fc7be3e38fd8056b1ba964256c3f0b04128826e16d24e2766d402af22544b35'
             '9072ce92080e4ff67beea3cc04aebd3f316c196195db350eb49ae3a88ac61c83'
             '6b13e3bf360d8dbd1f722ff0c2c98cf6020806a4cb1f9af64d6c7b6216452230'
             '0a6e050f5acbe9b90de88f3f7c3828bc190f5831ed582a8e49005fe999db306c'
@@ -148,37 +145,37 @@ sha256sums=('0e5047b33fadb07cf91bbdb447ea3d553f241dbffcd7af632fe334047b12210b'
             '66d0a7672b29293080baa141540bfdf584d3f013c6d2115fa2c9dfa28beee934'
             'd975a6abd6cb8ff2a2178d9a4755ea978033af522a0b4121d025703133a87ca2'
             'a392decc52fff5cd660f293b26739d7203f8678cc57d560f1b42efff1d43dc0d'
-            '038571a1df00b5ec63a20b442a7e6a0b382b805f4bb91fff1ed8186a9cf8d066'
+            'dfac4673959a225462c629045db1c0fd736717d11d8256a9827b45c3b5dadc44'
             'db1d9f62899a1acf917394d807f10765f3cbeef63c42f1e8359239b806f42517'
             '3d66b22f1ba6d7309eafd93e3b0a3d9ec841828f88cd8e267a7760585776dd5b'
             '0a148b0a15a63feb08ed79695a80d09ad39db7a3373b217cd499909218b94fda'
             'cabe339110369d08b2cef0b4308ee8eb8385054583815c3927421588ae94d9e7'
             '5a4ec61000266fd623e0a3377210ed324ed62eeba6c61ecd95ffb49d4d20640f'
             '4570a87cb632896818f8bf96eb38157bcbcfec55e702683e36d8bc63b16764af'
-            '8aa6928dfeec97b5a2c2b22e1abda42fd0e57b6c480356c12ca4726a59f12fa8'
+            '6a016da94025ddf28f589e86c953b9eb7561d97709871231c96b0fe7f0778cb7'
             '2acda9e5de0efa71c8347eb490bcae7993ae28dceaba406a0dafb50110539ba2'
             '1e9fc91a973977bdd03fddb65610f34e60a0fbd357033137dbb12f4657b14cf8'
-            'f84ac4bccda77a4fe6217595d68ef4d014338f85a421ff7fc99f9ace643779ef'
+            'e5f43c7014d140fd6b4c6cf478ae4edb107d963b8868dda0e19f74523f7385da'
             '216829c72f1cc378bc66fb4f62f047cccd31684d946ba9a406b6e7a8f1351677'
-            '48a42d38899795d4e959c6ec27a5e2288a3db54d3abf99f9caae887402d53988'
+            'fa919283c5ae73baeaa8cb0286e64926cc938a436e756296614b747154c4a777'
             'e69053b14c008ee8c20134a022726c09a81b03ef18dc1298d2d8fda88211568f'
             '814fa3b82c8330b944b138ece864be4761fe17f42061816028b5d8c1f2609c8a'
-            'df1cb61901ad861ffe1335f2dd516d473a062507cd498e6b6afd93ad41ff03af'
+            '8f7d2baca6d96b1e668c8c2bcb1efe5daa0e1cb33de89e12165ea22c73ce8741'
             '0ac16793634edde24c214eeffa9def755b9b76b256dfa3d9fd31de6002ff5dfa'
-            'b80b351152d3415b5b7dbfaf07edd94bb8f7dd56eab4380c577b102c6b758c10'
+            'f79555d6517335891dd74521189b6f3eca543a02699c34fbb92c874b4f080674'
             'c81a1414b48fb57e7089f3ceb1e85f34090348f4d6d8c7d1c138afd98a7663d4'
             '73a73b6551595c7bbe4eff6ab8cb5cd110cb62675c855370fc2121ec2e127be3'
-            '3bada398110162424b4ef39a531efe627924a87666042dff6716a53e830a578d'
-            'eea3267d7902a9e0463b83dd3dfecf77ce965e6481956d55b6a2f4e14e9ec6f6'
-            '6a9da2d08bf59c58d030f7adb4cd80e65ed918b7dc9316b911908c772a2df47e'
-            'b44bdeed4f3bfa314a18c8de7f45c50c58ed2ddb246318cfbc793dd9c92260d9'
-            'ef7b8055c13a4043e503f6d0ff366967e6726910106151762f1ae8fdad7509b6'
-            '967248b475cd7f495f160cb96a2fcb2a9684b2632fa4cfb90938921e04598b45'
-            'f04a103034426917980573a26088734e211e47c79706d964e3294801ff518816'
-            'f59483b9d7d93fd09ffce43f987078d656a67b2c7b90877d845932f290ce4c8c'
+            '52a3e05fed6d7486a15c336ba57180218e040b38702ab4ef79d97e2a2c293162'
+            '5c1f367e4b5d73401eedb0cb9e872e1955c6f0d4c3720c08afd2a74b54c8dd61'
+            '18ad268d9ad1ec4ae136f38ce0a2079820b63528ba062c63210fe44759a6d2f0'
+            '73e3a7865b98ab3bfebca6d1f31c5387e0719288fb47fd98b543063dadaaae19'
+            'b030b9fe17daf854b90693efab696c56ce62aef0796a50334b8354fdf953ac5a'
+            'fe491bdc640b1d56f76319885399cd83d1935a61c0036ca9765ab40c5ce13b3b'
+            '07e7b3b432b8f5398909f1250c595adb9ecc69a47e4d3a9bf3cf88c3893b22fc'
+            '51ee1c87a7889f9fae1fd0ecad57d97394cc89b1cea83bafdbaa8992a87e6561'
             '3fad36de0df6bf61047561ce18d5f08b66fb232aa3e80f82e4a0408a758f3f61'
             'f4122246d8d4898937de2f221248b8452fd3d24058b1d27005349e245c051e79'
-            '96fed3b7de6ffceee1e89d8459acbc6c990ec828f60b93385fa414bfe1453819'
+            '33369c2c13df92b16759a4ec56650cc52353110454775016bde277c1bce96ee5'
             '518edcadb1538bbcc3309039b9f7d7cff978f90ee9d547000a7e6821d5fa2d13'
             '776c4a7c55f406700714d427061556868d80ec786a2521a5e4660576b18c3d79'
             'cdc55ec692caffb02fba826308c6e39b0045674460098bda085237f2123798a0'
@@ -188,11 +185,11 @@ sha256sums=('0e5047b33fadb07cf91bbdb447ea3d553f241dbffcd7af632fe334047b12210b'
             '0526518bd42da73113a88a440739a50fb85fb0c1e8528b1a8340747d901e3f5b'
             'c367599e25bd9d408d52dd26ceec9f0048b0991cc74980c8c40d602e61a2a844'
             'b54a69d6eeb03bf56e5a6430cbc07fd8d12532709876d38828e4c455eca29e3b'
-            'a466902d700c22178ba4f01f3a3ed94bb296ddde36396b70690513b6934a3dcc'
+            'dc5b12678bea3a694a722e3e88277300c4a15050ceb35c9f7d873a5f8ab1ba54'
             '6130351d4c918e5b60f0ea4914e7e2f26fe4221ac97bcecacb4161fd2d23906c'
             'fb3abae54309adf69b98bd2435fbc23f17bc526dbf1d1e97907da87e7cf0aeed'
             'fb7c96ecf7f97fd6d356b8ca714efc518fc5bf40d92a23a5ff1ad8462d56b248'
-            '359b7502b1930b643db9a6aec3e75c06c1f917dd774c7562ac256a519cbaa6d7'
+            'ff99e980b62102ba5d42474cf7c77946e6bc3af575eb8e2bb0e059acdc395ba4'
             '38af0293f67513b2480047aebbd84fd5998ab3a20fb1af7a3f1e52b97dd27b20'
             '6d3251fb5aa200725a8cdc977d203ef98aaf8ed1564d0a4fa3b67c29a56520a9'
             'aaf6af367fcd478499f306cb1db44bbd4f58fadfc4b969046ec9fb47a2327db7'
@@ -209,11 +206,7 @@ sha256sums=('0e5047b33fadb07cf91bbdb447ea3d553f241dbffcd7af632fe334047b12210b'
             '1bb54bd32e78bddc68986a5ddb93eff29ac6cfe2744a499f52071fa3420591f0'
             '5c6845a62c845d8b506ad3704158b96fb7b3a2f59a7a6b9eb8f14781a79a86ac'
             '862a852fbe5d502ac35227c46ca54304f47e7400041dff806f10bd2d82f7b971'
-            'cb2443816f181c50f4e72bca899d52ef1ecd14ec333d271e1e33223ceb6107e4'
-            '042b36c27c788f80fcbb3d55059d22ce773a2eebf2b5e5bd7d7780d32c0a96da'
-            'cd4c8fa8294f542a3fea1dd3df4a0a7370723f7139e5c59ec53f4ed639976d80'
-            '3e60735150ca40812d7c0296b52285a9012fb8b9100f24378fea95e20beb43e6')
-
+            'cb2443816f181c50f4e72bca899d52ef1ecd14ec333d271e1e33223ceb6107e4')
 
 # Possible replacements are listed in build/linux/unbundle/replace_gn_files.py
 # Keys are the names in the above script; values are the dependencies in Arch
@@ -245,6 +238,7 @@ depends+=(${_system_libs[@]})
 
 prepare() {
   cd "$srcdir/$name-$pkgver"
+
   # https://crbug.com/710701
   local _chrome_build_hash=$(curl -s https://chromium.googlesource.com/chromium/src.git/+/$pkgver?format=TEXT |
     base64 -d | grep -Po '^parent \K[a-z0-9]{40}$')
@@ -259,8 +253,6 @@ prepare() {
   # (Version string doesn't seem to matter so let's go with "Pinkie Pie")
   sed "s/@WIDEVINE_VERSION@/Pinkie Pie/" ../chromium-widevine.patch |
     patch -Np1
-
-
 
 patch -Np1 -i ../001.patch
 patch -Np1 -i ../002.patch
@@ -284,7 +276,7 @@ patch -Np1 -i ../020.patch
 patch -Np1 -i ../021.patch
 patch -Np1 -i ../022.patch
 patch -Np1 -i ../023.patch
-#patch -Np1 -i ../024.patch
+patch -Np1 -i ../024.patch
 patch -Np1 -i ../025.patch
 #patch -Np1 -i ../026.patch
 patch -Np1 -i ../027.patch
@@ -343,8 +335,6 @@ patch -Np1 -i ../p2.patch
 patch -Np1 -i ../e3.patch
 patch -Np1 -i ../narnia1.patch
 
-
-
 #patch -Np1 -i ../9k.patch
 #patch -Np1 -i ../048.patch
 
@@ -354,20 +344,18 @@ patch -Np1 -i ../16.patch
 
 
 patch -Np1 -i ../k1.patch
-patch -Np1 -i ../k2.patch
-
-patch -Np1 -i ../edgy.patch
 #patch -Np1 -i ../r21.patch
   # Fix build with glibc 2.26
 
-patch -Np1 -i ../gna.patch
   patch -Np1 -i ../gnb.patch
-patch -Np1 -i ../gnc.patch
-patch -Np1 -i ../desu.patch
+
+
   # Fix incorrect inclusion of <string_view> in modes other than >= C++17
+  
   # Fixes from Gentoo
 
   # Use Python 2
+msg2 'py2'
   find . -name '*.py' -exec sed -i -r 's|/usr/bin/python$|&2|g' {} +
 
   # There are still a lot of relative calls which need a workaround
@@ -381,11 +369,13 @@ patch -Np1 -i ../desu.patch
   # *should* do what the remove_bundled_libraries.py script does, with the
   # added benefit of not having to list all the remaining libraries
 
-
+msg2 'replacing libs'
 
 
   python2 build/linux/unbundle/replace_gn_files.py \
     --system-libraries "${!_system_libs[@]}"
+
+msg2 'downloading build tools'
 python2 tools/clang/scripts/update.py
 
   cd "$srcdir/chromium-launcher-$_launcher_ver"
@@ -403,7 +393,7 @@ build() {
   export TMPDIR="$srcdir/temp"
   mkdir -p "$TMPDIR"
 
-   local _flags=(
+  local _flags=(
     'symbol_level=0'
     'is_debug=false'
     'fatal_linker_warnings=false'
@@ -413,6 +403,7 @@ build() {
     'ffmpeg_branding="Chrome"'
     'proprietary_codecs=true'
     'link_pulseaudio=true'
+    'use_gconf=false'
     'use_gnome_keyring=false'
     'use_gold=false'
     'use_sysroot=false'
@@ -426,10 +417,10 @@ build() {
     'enable_nacl=false'
     'enable_swiftshader=false'
     'enable_nacl_nonsfi=false'
-    'enable_google_now=false'
-    'enable_print_preview=true'
     'enable_remoting=false'
-    'use_lld=false'
+    'enable_google_now=false'
+    'enable_hotwording=false'
+    'enable_print_preview=true'
   )
 
       _clang_path="${srcdir}/chromium-${pkgver}/third_party/llvm-build/Release+Asserts/bin"
@@ -448,47 +439,41 @@ build() {
   export CC="${_c_compiler}"
   export CXX="${_cpp_compiler}"
 
-  sed 's|is_win \|\| (is_linux && use_x11 && !is_chromeos)|false|g' -i third_party/angle/gni/angle.gni
 
- python2 tools/gn/bootstrap/bootstrap.py --gn-gen-args "${_flags[*]}"
+  python2 tools/gn/bootstrap/bootstrap.py --gn-gen-args "${_flags[*]}"
   out/Release/gn gen out/Release --args="${_flags[*]}" \
     --script-executable=/usr/bin/python2
 
-python2 build/util/lastchange.py -m GPU_LISTS_VERSION \
---revision-id-only --header gpu/config/gpu_lists_version.h
+python2 build/util/lastchange.py -m GPU_LISTS_VERSION --revision-id-only --header gpu/config/gpu_lists_version.h
 
-
-
-
-  ninja -j8 -C out/Release  pdf chrome chrome_sandbox chromedriver
+  ninja -C out/Release chrome chrome_sandbox chromedriver widevinecdmadapter
 }
 
 package() {
   cd chromium-launcher-$_launcher_ver
   make PREFIX=/usr DESTDIR="$pkgdir" install
   install -Dm644 LICENSE \
-    "$pkgdir/usr/share/licenses/enox/LICENSE.launcher"
+    "$pkgdir/usr/share/licenses/dnox/LICENSE.launcher"
 
   cd "$srcdir/$name-$pkgver"
 
   install -D out/Release/chrome "$pkgdir/usr/lib/$pk/$pk"
-  install -Dm644 "$srcdir/enox.desktop" \
-    "$pkgdir/usr/share/applications/enox.desktop"
+  install -Dm644 "$srcdir/dnox.desktop" \
+    "$pkgdir/usr/share/applications/dnox.desktop"
 
-  install -Dm4755 out/Release/chrome_sandbox \
-    "$pkgdir/usr/lib/enox/chrome-sandbox"
+  install -Dm4755 out/Release/chrome_sandbox "$pkgdir/usr/lib/$pk/chrome-sandbox"
 
   cp -a \
     out/Release/{chrome_{100,200}_percent,resources}.pak \
     out/Release/{*.bin,chromedriver} \
     out/Release/locales \
-    "$pkgdir/usr/lib/enox/"
+    "$pkgdir/usr/lib/$pk/"
 
   if [[ -z ${_system_libs[icu]+set} ]]; then
-    cp out/Release/icudtl.dat "$pkgdir/usr/lib/enox/"
+    cp out/Release/icudtl.dat "$pkgdir/usr/lib/$pk/"
   fi
 
-  ln -s /usr/lib/$pk/enoxdriver "$pkgdir/usr/bin/enoxdriver"
+  ln -s /usr/lib/$pk/dnoxdriver "$pkgdir/usr/bin/dnoxdriver"
 
   for size in 16 22 24 32 48 64 128 256; do
     install -Dm644 "$srcdir/product_logo_$size.png" \
@@ -497,7 +482,7 @@ package() {
 
 
 
-  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/enox/LICENSE"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/dnox/LICENSE"
 }
 
 # vim:set ts=2 sw=2 et:
