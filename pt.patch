@@ -1,11 +1,405 @@
---- a/components/policy/core/common/cloud/cloud_policy_util.cc	2018-04-03 03:04:52.000000000 -0400
-+++ b/components/policy/core/common/cloud/cloud_policy_util.cc.new	2018-04-03 12:34:22.432522012 -0400
-@@ -6,6 +6,8 @@
+diff --git a/base/message_loop/message_loop.cc b/base/message_loop/message_loop.cc
+index d84fb77..a7c3f25 100644
+--- a/base/message_loop/message_loop.cc
++++ b/base/message_loop/message_loop.cc
+@@ -14,11 +14,9 @@
+ #include "base/message_loop/message_pump_default.h"
+ #include "base/message_loop/message_pump_for_io.h"
+ #include "base/message_loop/message_pump_for_ui.h"
+-#include "base/no_destructor.h"
+ #include "base/run_loop.h"
+ #include "base/third_party/dynamic_annotations/dynamic_annotations.h"
+ #include "base/threading/thread_id_name_manager.h"
+-#include "base/threading/thread_local.h"
+ #include "base/threading/thread_task_runner_handle.h"
+ #include "base/trace_event/trace_event.h"
  
- #include "build/build_config.h"
+@@ -30,12 +28,6 @@
  
-+#include <limits.h>
-+
+ namespace {
+ 
+-// A lazily created thread local storage for quick access to a thread's message
+-// loop, if one exists.
+-base::ThreadLocalPointer<MessageLoop>* GetTLSMessageLoop() {
+-  static NoDestructor<ThreadLocalPointer<MessageLoop>> lazy_tls_ptr;
+-  return lazy_tls_ptr.get();
+-}
+ MessageLoop::MessagePumpFactory* message_pump_for_ui_factory_ = nullptr;
+ 
+ std::unique_ptr<MessagePump> ReturnPump(std::unique_ptr<MessagePump> pump) {
+@@ -61,8 +53,8 @@
+   // current one on this thread. Otherwise, this loop is being destructed before
+   // it was bound to a thread, so a different message loop (or no loop at all)
+   // may be current.
+-  DCHECK((pump_ && GetTLSMessageLoop()->Get() == this) ||
+-         (!pump_ && GetTLSMessageLoop()->Get() != this));
++  DCHECK((pump_ && MessageLoopCurrent::IsBoundToCurrentThreadInternal(this)) ||
++         (!pump_ && !MessageLoopCurrent::IsBoundToCurrentThreadInternal(this)));
+ 
+   // iOS just attaches to the loop, it doesn't Run it.
+   // TODO(stuartmorgan): Consider wiring up a Detach().
+@@ -70,9 +62,10 @@
+   // There should be no active RunLoops on this thread, unless this MessageLoop
+   // isn't bound to the current thread (see other condition at the top of this
+   // method).
+-  DCHECK((!pump_ && GetTLSMessageLoop()->Get() != this) ||
+-         !RunLoop::IsRunningOnCurrentThread());
+-#endif
++  DCHECK(
++      (!pump_ && !MessageLoopCurrent::IsBoundToCurrentThreadInternal(this)) ||
++      !RunLoop::IsRunningOnCurrentThread());
++#endif  // !defined(OS_IOS)
+ 
  #if defined(OS_WIN)
- #include <Windows.h>  // For GetComputerNameW()
+   if (in_high_res_mode_)
+@@ -107,13 +100,13 @@
+   task_runner_ = nullptr;
+ 
+   // OK, now make it so that no one can find us.
+-  if (GetTLSMessageLoop()->Get() == this)
+-    GetTLSMessageLoop()->Set(nullptr);
++  if (MessageLoopCurrent::IsBoundToCurrentThreadInternal(this))
++    MessageLoopCurrent::UnbindFromCurrentThreadInternal(this);
+ }
+ 
+ // static
+ MessageLoopCurrent MessageLoop::current() {
+-  return MessageLoopCurrent(GetTLSMessageLoop()->Get());
++  return MessageLoopCurrent::Get();
+ }
+ 
+ // static
+@@ -223,9 +216,9 @@
+   else
+     pump_ = CreateMessagePumpForType(type_);
+ 
+-  DCHECK(!GetTLSMessageLoop()->Get())
++  DCHECK(!MessageLoopCurrent::IsSet())
+       << "should only have one message loop per thread";
+-  GetTLSMessageLoop()->Set(this);
++  MessageLoopCurrent::BindToCurrentThreadInternal(this);
+ 
+   incoming_task_queue_->StartScheduling();
+   unbound_task_runner_->BindToCurrentThread();
+@@ -452,23 +445,12 @@
+ 
+ // static
+ MessageLoopCurrentForUI MessageLoopForUI::current() {
+-  MessageLoop* loop = GetTLSMessageLoop()->Get();
+-  DCHECK(loop);
+-#if defined(OS_ANDROID)
+-  DCHECK(loop->IsType(MessageLoop::TYPE_UI) ||
+-         loop->IsType(MessageLoop::TYPE_JAVA));
+-#else
+-  DCHECK(loop->IsType(MessageLoop::TYPE_UI));
+-#endif
+-  auto* loop_for_ui = static_cast<MessageLoopForUI*>(loop);
+-  return MessageLoopCurrentForUI(
+-      loop_for_ui, static_cast<MessagePumpForUI*>(loop_for_ui->pump_.get()));
++  return MessageLoopCurrentForUI::Get();
+ }
+ 
+ // static
+ bool MessageLoopForUI::IsCurrent() {
+-  MessageLoop* loop = GetTLSMessageLoop()->Get();
+-  return loop && loop->IsType(MessageLoop::TYPE_UI);
++  return MessageLoopCurrentForUI::IsSet();
+ }
+ 
+ #if defined(OS_IOS)
+@@ -495,18 +477,12 @@
+ 
+ // static
+ MessageLoopCurrentForIO MessageLoopForIO::current() {
+-  MessageLoop* loop = GetTLSMessageLoop()->Get();
+-  DCHECK(loop);
+-  DCHECK_EQ(MessageLoop::TYPE_IO, loop->type());
+-  auto* loop_for_io = static_cast<MessageLoopForIO*>(loop);
+-  return MessageLoopCurrentForIO(
+-      loop_for_io, static_cast<MessagePumpForIO*>(loop_for_io->pump_.get()));
++  return MessageLoopCurrentForIO::Get();
+ }
+ 
+ // static
+ bool MessageLoopForIO::IsCurrent() {
+-  MessageLoop* loop = GetTLSMessageLoop()->Get();
+-  return loop && loop->IsType(MessageLoop::TYPE_IO);
++  return MessageLoopCurrentForIO::IsSet();
+ }
+ 
+ }  // namespace base
+diff --git a/base/message_loop/message_loop.h b/base/message_loop/message_loop.h
+index ee195f6..8a2657a 100644
+--- a/base/message_loop/message_loop.h
++++ b/base/message_loop/message_loop.h
+@@ -130,12 +130,7 @@
+ 
+   ~MessageLoop() override;
+ 
+-  // Returns an interface to interact with the MessageLoop instance for the
+-  // current thread. This interface evaluates to false if there are no
+-  // MessageLoop on the current thread. This interface is valid as long as the
+-  // underlying MessageLoop instance is valid.
+-  // TODO(gab): Move this to message_loop_current.h so static callers don't even
+-  // need to include message_loop.h
++  // TODO(gab): Mass migrate callers to MessageLoopCurrent::Get().
+   static MessageLoopCurrent current();
+ 
+   using MessagePumpFactory = std::unique_ptr<MessagePump>();
+@@ -349,11 +344,8 @@
+ 
+   explicit MessageLoopForUI(std::unique_ptr<MessagePump> pump);
+ 
+-  // Returns an interface for the MessageLoopForUI of the current thread.
+-  // Asserts that IsCurrent().
++  // TODO(gab): Mass migrate callers to MessageLoopCurrentForUI::Get()/IsSet().
+   static MessageLoopCurrentForUI current();
+-
+-  // Returns true if the current thread is running a MessageLoopForUI.
+   static bool IsCurrent();
+ 
+ #if defined(OS_IOS)
+@@ -397,11 +389,8 @@
+  public:
+   MessageLoopForIO() : MessageLoop(TYPE_IO) {}
+ 
+-  // Returns an interface for the MessageLoopForIO of the current thread.
+-  // Asserts that IsCurrent().
++  // TODO(gab): Mass migrate callers to MessageLoopCurrentForIO::Get()/IsSet().
+   static MessageLoopCurrentForIO current();
+-
+-  // Returns true if the current thread is running a MessageLoopForIO.
+   static bool IsCurrent();
+ };
+ 
+diff --git a/base/message_loop/message_loop_current.cc b/base/message_loop/message_loop_current.cc
+index b44d00f..93ff47b 100644
+--- a/base/message_loop/message_loop_current.cc
++++ b/base/message_loop/message_loop_current.cc
+@@ -8,12 +8,33 @@
+ #include "base/message_loop/message_loop.h"
+ #include "base/message_loop/message_pump_for_io.h"
+ #include "base/message_loop/message_pump_for_ui.h"
++#include "base/no_destructor.h"
++#include "base/threading/thread_local.h"
+ 
+ namespace base {
+ 
++namespace {
++
++base::ThreadLocalPointer<MessageLoop>* GetTLSMessageLoop() {
++  static NoDestructor<ThreadLocalPointer<MessageLoop>> lazy_tls_ptr;
++  return lazy_tls_ptr.get();
++}
++
++}  // namespace
++
+ //------------------------------------------------------------------------------
+ // MessageLoopCurrent
+ 
++// static
++MessageLoopCurrent MessageLoopCurrent::Get() {
++  return MessageLoopCurrent(GetTLSMessageLoop()->Get());
++}
++
++// static
++bool MessageLoopCurrent::IsSet() {
++  return !!GetTLSMessageLoop()->Get();
++}
++
+ void MessageLoopCurrent::AddDestructionObserver(
+     DestructionObserver* destruction_observer) {
+   DCHECK_CALLED_ON_VALID_THREAD(current_->bound_thread_checker_);
+@@ -73,11 +94,56 @@
+   return current_->task_execution_allowed_;
+ }
+ 
++// static
++void MessageLoopCurrent::BindToCurrentThreadInternal(MessageLoop* current) {
++  DCHECK(!GetTLSMessageLoop()->Get())
++      << "Can't register a second MessageLoop on the same thread.";
++  GetTLSMessageLoop()->Set(current);
++}
++
++// static
++void MessageLoopCurrent::UnbindFromCurrentThreadInternal(MessageLoop* current) {
++  DCHECK_EQ(current, GetTLSMessageLoop()->Get());
++  GetTLSMessageLoop()->Set(nullptr);
++}
++
++bool MessageLoopCurrent::IsBoundToCurrentThreadInternal(
++    MessageLoop* message_loop) {
++  return GetTLSMessageLoop()->Get() == message_loop;
++}
++
+ #if !defined(OS_NACL)
+ 
+ //------------------------------------------------------------------------------
+ // MessageLoopCurrentForUI
+ 
++// static
++MessageLoopCurrentForUI MessageLoopCurrentForUI::Get() {
++  MessageLoop* loop = GetTLSMessageLoop()->Get();
++  DCHECK(loop);
++#if defined(OS_ANDROID)
++  DCHECK(loop->IsType(MessageLoop::TYPE_UI) ||
++         loop->IsType(MessageLoop::TYPE_JAVA));
++#else   // defined(OS_ANDROID)
++  DCHECK(loop->IsType(MessageLoop::TYPE_UI));
++#endif  // defined(OS_ANDROID)
++  auto* loop_for_ui = static_cast<MessageLoopForUI*>(loop);
++  return MessageLoopCurrentForUI(
++      loop_for_ui, static_cast<MessagePumpForUI*>(loop_for_ui->pump_.get()));
++}
++
++// static
++bool MessageLoopCurrentForUI::IsSet() {
++  MessageLoop* loop = GetTLSMessageLoop()->Get();
++  return loop &&
++#if defined(OS_ANDROID)
++         (loop->IsType(MessageLoop::TYPE_UI) ||
++          loop->IsType(MessageLoop::TYPE_JAVA));
++#else   // defined(OS_ANDROID)
++         loop->IsType(MessageLoop::TYPE_UI);
++#endif  // defined(OS_ANDROID)
++}
++
+ #if (defined(USE_OZONE) && !defined(OS_FUCHSIA)) || \
+     (defined(USE_X11) && !defined(USE_GLIB))
+ bool MessageLoopCurrentForUI::WatchFileDescriptor(
+@@ -112,6 +178,22 @@
+ //------------------------------------------------------------------------------
+ // MessageLoopCurrentForIO
+ 
++// static
++MessageLoopCurrentForIO MessageLoopCurrentForIO::Get() {
++  MessageLoop* loop = GetTLSMessageLoop()->Get();
++  DCHECK(loop);
++  DCHECK_EQ(MessageLoop::TYPE_IO, loop->type());
++  auto* loop_for_io = static_cast<MessageLoopForIO*>(loop);
++  return MessageLoopCurrentForIO(
++      loop_for_io, static_cast<MessagePumpForIO*>(loop_for_io->pump_.get()));
++}
++
++// static
++bool MessageLoopCurrentForIO::IsSet() {
++  MessageLoop* loop = GetTLSMessageLoop()->Get();
++  return loop && loop->IsType(MessageLoop::TYPE_IO);
++}
++
+ #if !defined(OS_NACL_SFI)
+ 
+ #if defined(OS_WIN)
+diff --git a/base/message_loop/message_loop_current.h b/base/message_loop/message_loop_current.h
+index ea81f06..2cc324f 100644
+--- a/base/message_loop/message_loop_current.h
++++ b/base/message_loop/message_loop_current.h
+@@ -17,18 +17,16 @@
+ namespace base {
+ 
+ class MessageLoop;
+-class MessageLoopForIO;
+-class MessageLoopForUI;
+ class SingleThreadTaskRunner;
+ 
+ // MessageLoopCurrent is a proxy to the public interface of the MessageLoop
+ // bound to the thread it's obtained on.
+ //
+ // MessageLoopCurrent(ForUI|ForIO) is available statically through
+-// MessageLoop(ForUI|ForIO)::current() on threads that have a matching
++// MessageLoopCurrent(ForUI|ForIO)::Get() on threads that have a matching
+ // MessageLoop instance. APIs intended for all consumers on the thread should be
+-// on MessageLoopCurrent(ForUI|ForIO), while APIs intended for the owner of
+-// the instance should be on MessageLoop(ForUI|ForIO).
++// on MessageLoopCurrent(ForUI|ForIO), while APIs intended for the owner of the
++// instance should be on MessageLoop(ForUI|ForIO).
+ //
+ // Why: Historically MessageLoop::current() gave access to the full MessageLoop
+ // API, preventing both addition of powerful owner-only APIs as well as making
+@@ -45,6 +43,15 @@
+   MessageLoopCurrent(const MessageLoopCurrent& other) = default;
+   MessageLoopCurrent& operator=(const MessageLoopCurrent& other) = default;
+ 
++  // Returns a proxy object to interact with the MessageLoop running the
++  // current thread. It must only be used on the thread it was obtained.
++  static MessageLoopCurrent Get();
++
++  // Returns true if the current thread is running a MessageLoop. Prefer this to
++  // verifying the boolean value of Get() (so that Get() can ultimately DCHECK
++  // it's only invoked when IsSet()).
++  static bool IsSet();
++
+   // Allow MessageLoopCurrent to be used like a pointer to support the many
+   // callsites that used MessageLoop::current() that way when it was a
+   // MessageLoop*.
+@@ -172,10 +179,21 @@
+   // level.
+   bool IsIdleForTesting();
+ 
++  // Binds |current| to the current thread. It will from then on be the
++  // MessageLoop driven by MessageLoopCurrent on this thread. This is only meant
++  // to be invoked by the MessageLoop itself.
++  static void BindToCurrentThreadInternal(MessageLoop* current);
++
++  // Unbinds |current| from the current thread. Must be invoked on the same
++  // thread that invoked |BindToCurrentThreadInternal(current)|. This is only
++  // meant to be invoked by the MessageLoop itself.
++  static void UnbindFromCurrentThreadInternal(MessageLoop* current);
++
++  // Returns true if |message_loop| is bound to MessageLoopCurrent on the
++  // current thread. This is only meant to be invoked by the MessageLoop itself.
++  static bool IsBoundToCurrentThreadInternal(MessageLoop* message_loop);
++
+  protected:
+-  // Apart from subclasses: only a MessageLoop can create MessageLoopCurrent
+-  // instances.
+-  friend class MessageLoop;
+   MessageLoopCurrent(MessageLoop* current) : current_(current) {}
+ 
+   MessageLoop* const current_;
+@@ -186,6 +204,13 @@
+ // ForUI extension of MessageLoopCurrent.
+ class BASE_EXPORT MessageLoopCurrentForUI : public MessageLoopCurrent {
+  public:
++  // Returns an interface for the MessageLoopForUI of the current thread.
++  // Asserts that IsSet().
++  static MessageLoopCurrentForUI Get();
++
++  // Returns true if the current thread is running a MessageLoopForUI.
++  static bool IsSet();
++
+   MessageLoopCurrentForUI* operator->() { return this; }
+ 
+ #if (defined(USE_OZONE) && !defined(OS_FUCHSIA)) || \
+@@ -224,8 +249,6 @@
  #endif
+ 
+  private:
+-  // Only a MessageLoopForUI can create MessageLoopCurrentForUI instances.
+-  friend class MessageLoopForUI;
+   MessageLoopCurrentForUI(MessageLoop* current, MessagePumpForUI* pump)
+       : MessageLoopCurrent(current), pump_(pump) {
+     DCHECK(pump_);
+@@ -239,6 +262,13 @@
+ // ForIO extension of MessageLoopCurrent.
+ class BASE_EXPORT MessageLoopCurrentForIO : public MessageLoopCurrent {
+  public:
++  // Returns an interface for the MessageLoopForIO of the current thread.
++  // Asserts that IsSet().
++  static MessageLoopCurrentForIO Get();
++
++  // Returns true if the current thread is running a MessageLoopForIO.
++  static bool IsSet();
++
+   MessageLoopCurrentForIO* operator->() { return this; }
+ 
+ #if !defined(OS_NACL_SFI)
+@@ -270,8 +300,6 @@
+ #endif  // !defined(OS_NACL_SFI)
+ 
+  private:
+-  // Only a MessageLoopForIO can create MessageLoopCurrentForIO instances.
+-  friend class MessageLoopForIO;
+   MessageLoopCurrentForIO(MessageLoop* current, MessagePumpForIO* pump)
+       : MessageLoopCurrent(current), pump_(pump) {
+     DCHECK(pump_);

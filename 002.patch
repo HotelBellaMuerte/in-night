@@ -1,6 +1,6 @@
 --- a/components/google/core/browser/google_url_tracker.cc	2017-10-04 18:07:39.000000000 -0400
 +++ b/components/google/core/browser/google_url_tracker.cc	2017-10-08 18:37:42.467563363 -0400
-@@ -26,9 +26,9 @@
+@@ -26,11 +26,11 @@
  
  
  const char GoogleURLTracker::kDefaultGoogleHomepage[] =
@@ -9,10 +9,13 @@
  const char GoogleURLTracker::kSearchDomainCheckURL[] =
 -    "https://www.google.com/searchdomaincheck?format=domain&type=chrome";
 +    "";
+ const base::Feature GoogleURLTracker::kNoSearchDomainCheck{
+-    "NoSearchDomainCheck", base::FEATURE_DISABLED_BY_DEFAULT};
++    "NoSearchDomainCheck", base::FEATURE_ENABLED_BY_DEFAULT};
  
  GoogleURLTracker::GoogleURLTracker(
      std::unique_ptr<GoogleURLTrackerClient> client,
-@@ -143,83 +143,4 @@
+@@ -147,83 +147,4 @@
  }
  
  void GoogleURLTracker::StartFetchIfDesirable() {
