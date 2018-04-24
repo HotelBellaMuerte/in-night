@@ -108,14 +108,14 @@
    command_updater_.UpdateCommandEnabled(IDC_TOUCH_HUD_PROJECTION_TOGGLE, true);
 --- a/tools/metrics/histograms/histograms.xml
 +++ b/tools/metrics/histograms/histograms.xml
-@@ -110490,6 +110490,7 @@
-   </suffix>
-   <suffix name="Cast"/>
+@@ -118501,6 +118501,7 @@
+   <suffix name="About"/>
+   <suffix name="AppInfo"/>
    <suffix name="BetaForum"/>
 +  <suffix name="ClearHttpAuthCache"/>
-   <suffix name="CopyUrl"/>
-   <suffix name="OpenInChrome"/>
-   <suffix name="SiteSettings"/>
+   <suffix name="BookmarkAllTabs"/>
+   <suffix name="BookmarkOpen">
+     <obsolete>
 --- a/net/http/http_auth_cache.cc
 +++ b/net/http/http_auth_cache.cc
 @@ -253,6 +253,10 @@ bool HttpAuthCache::Remove(const GURL& o
