@@ -1,7 +1,7 @@
---- a/chrome/browser/ui/chrome_pages.cc	2018-04-28 06:07:33.000000000 
+--- a/chrome/browser/ui/chrome_pages.cc	2018-04-28 19:51:03.401485817 
 -0400
 +++ b/chrome/browser/ui/chrome_pages.cc.new	2018-04-28 
-18:01:21.403899966 -0400
+19:59:09.964119903 -0400
 @@ -77,12 +77,6 @@
    ShowSingletonTabOverwritingNTP(browser, std::move(params));
  }
@@ -19,18 +19,24 @@
  #if !defined(OS_ANDROID)
  void ShowBrowserSignin(Browser* browser,
                         signin_metrics::AccessPoint access_point) {
-+# if 0
++#if 0
    Profile* original_profile = browser->profile()->GetOriginalProfile();
    SigninManagerBase* manager =
        SigninManagerFactory::GetForProfile(original_profile);
-@@ -437,7 +432,9 @@
+@@ -437,14 +432,8 @@
              access_point, signin_metrics::Reason::REASON_SIGNIN_PRIMARY_ACCOUNT,
              false));
      DCHECK_GT(browser->tab_strip_model()->count(), 0);
 -  } else {
+-#if defined(OS_CHROMEOS)
+-    NOTREACHED();
+-#else
+-    browser->signin_view_controller()->ShowSignin(
+-        profiles::BUBBLE_VIEW_MODE_GAIA_SIGNIN, browser, access_point);
+-#endif
+-  }
 +  } 
 +   #endif
-+else {
- #if defined(OS_CHROMEOS)
-     NOTREACHED();
- #else
+ }
+ 
+ void ShowBrowserSigninOrSettings(Browser* browser,
