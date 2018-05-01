@@ -1,5 +1,7 @@
---- chrome/browser/extensions/component_loader.cc	2018-05-01 03:04:58.000000000 -0400
-+++ chrome/browser/extensions/component_loader.cc.new	2018-05-01 13:04:43.456738461 -0400
+--- a/chrome/browser/extensions/component_loader.cc	2018-05-01 
+03:04:58.000000000 -0400
++++ b/chrome/browser/extensions/component_loader.cc.new	2018-05-01 
+13:04:43.456738461 -0400
 @@ -421,10 +421,6 @@
      return;
  #endif
