@@ -118,7 +118,7 @@
      <obsolete>
 --- a/net/http/http_auth_cache.cc
 +++ b/net/http/http_auth_cache.cc
-@@ -253,6 +253,10 @@ bool HttpAuthCache::Remove(const GURL& o
+@@ -253,6 +253,11 @@
    return false;
  }
  
@@ -126,20 +126,21 @@
 +  entries_.clear();
 +}
 +
- void HttpAuthCache::ClearEntriesAddedWithin(base::TimeDelta duration) {
-   base::TimeTicks begin_time = base::TimeTicks::Now() - duration;
-   base::EraseIf(entries_, [begin_time](const Entry& entry) {
++
+ void HttpAuthCache::ClearEntriesAddedSince(base::Time begin_time) {
+   if (begin_time.is_null()) {
+     ClearAllEntries();
 --- a/net/http/http_auth_cache.h
 +++ b/net/http/http_auth_cache.h
-@@ -166,6 +166,8 @@ class NET_EXPORT HttpAuthCache {
+@@ -165,6 +165,8 @@
                HttpAuth::Scheme scheme,
                const AuthCredentials& credentials);
  
 +  void Clear();
 +
-   // Clears cache entries created within |duration| of base::TimeTicks::Now().
-   void ClearEntriesAddedWithin(base::TimeDelta duration);
- 
+   // Clears cache entries added since |begin_time| or all entries if
+   // |begin_time| is null.
+   void ClearEntriesAddedSince(base::Time begin_time);
 --- a/tools/metrics/histograms/enums.xml
 +++ b/tools/metrics/histograms/enums.xml
 @@ -45087,6 +45087,7 @@
