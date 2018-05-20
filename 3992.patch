@@ -1,8 +1,8 @@
 --- a/chrome/browser/media/router/media_router_feature.cc	
-2018-04-28 17:49:05.180272634 -0400
+2018-05-20 13:30:39.941668362 -0400
 +++ b/chrome/browser/media/router/media_router_feature.cc.new	
-2018-04-28 17:51:07.344200888 -0400
-@@ -11,36 +11,28 @@
+2018-05-20 13:33:31.976474960 -0400
+@@ -11,33 +11,24 @@
  #include "extensions/buildflags/buildflags.h"
  #include "ui/base/ui_features.h"
  
@@ -11,7 +11,7 @@
  #include "components/prefs/pref_service.h"
  #include "components/user_prefs/user_prefs.h"
 -#endif  // defined(OS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS)
- 
+-
 -#if !defined(OS_ANDROID)
  #include "components/prefs/pref_registry_simple.h"
 -#endif
@@ -31,17 +31,13 @@
  const base::Feature kCastMediaRouteProvider{"CastMediaRouteProvider",
                                              base::FEATURE_DISABLED_BY_DEFAULT};
  
- // Controls if local media casting is enabled.
- const base::Feature kEnableCastLocalMedia{"EnableCastLocalMedia",
--                                          base::FEATURE_ENABLED_BY_DEFAULT};
 -#endif
 -
 -#if defined(OS_ANDROID) || BUILDFLAG(ENABLE_EXTENSIONS)
-+                                          base::FEATURE_DISABLED_BY_DEFAULT};
  namespace {
  const PrefService::Preference* GetMediaRouterPref(
      content::BrowserContext* context) {
-@@ -48,10 +40,8 @@
+@@ -45,10 +36,8 @@
        ::prefs::kEnableMediaRouter);
  }
  }  // namespace
@@ -52,7 +48,7 @@
    const PrefService::Preference* pref = GetMediaRouterPref(context);
    // Only use the pref value if it set from a mandatory policy.
    if (pref->IsManaged() && !pref->IsDefaultValue()) {
-@@ -62,13 +52,9 @@
+@@ -59,13 +48,9 @@
  
    // The component extension cannot be loaded in guest sessions.
    // TODO(crbug.com/756243): Figure out why.
@@ -66,7 +62,7 @@
  void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
    registry->RegisterBooleanPref(prefs::kMediaRouterCastAllowAllIPs, false,
                                  PrefRegistry::PUBLIC);
-@@ -108,12 +94,7 @@
+@@ -101,12 +86,7 @@
  }
  
  bool PresentationReceiverWindowEnabled() {
