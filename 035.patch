@@ -1,12 +1,12 @@
---- a/tools/gn/bootstrap/bootstrap.py	2018-05-20 13:36:48.004889745 
+--- a/tools/gn/bootstrap/bootstrap.py	2018-05-23 18:08:29.819531735 
 -0400
-+++ b/tools/gn/bootstrap/bootstrap.py.new	2018-05-20 
-14:08:48.286761101 -0400
-@@ -602,6 +602,7 @@
-       'base/task_scheduler/sequence_sort_key.cc',
-       'base/task_scheduler/task.cc',
-       'base/task_scheduler/task_scheduler.cc',
-+      'base/task_scheduler/service_thread.cc',
-       'base/task_scheduler/task_scheduler_impl.cc',
-       'base/task_scheduler/task_tracker.cc',
-       'base/task_scheduler/task_traits.cc',
++++ b/tools/gn/bootstrap/bootstrap.py.new	2018-05-23 
+18:26:03.575318658 -0400
+@@ -649,7 +649,6 @@
+       'base/trace_event/memory_peak_detector.cc',
+       'base/trace_event/memory_usage_estimator.cc',
+       'base/trace_event/process_memory_dump.cc',
+-      'base/trace_event/sharded_allocation_register.cc',
+       'base/trace_event/trace_buffer.cc',
+       'base/trace_event/trace_config.cc',
+       'base/trace_event/trace_config_category_filter.cc',
