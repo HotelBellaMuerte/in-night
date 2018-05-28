@@ -1,604 +1,391 @@
-diff --git a/base/memory/ref_counted_memory.cc b/base/memory/ref_counted_memory.cc
-index 7999d90..23a5ffc 100644
---- a/base/memory/ref_counted_memory.cc
-+++ b/base/memory/ref_counted_memory.cc
-@@ -7,6 +7,7 @@
- #include <utility>
- 
- #include "base/logging.h"
-+#include "base/memory/read_only_shared_memory_region.h"
- 
- namespace base {
- 
-@@ -95,11 +96,37 @@
- RefCountedSharedMemory::~RefCountedSharedMemory() = default;
- 
- const unsigned char* RefCountedSharedMemory::front() const {
--  return reinterpret_cast<const unsigned char*>(shm_->memory());
-+  return static_cast<const unsigned char*>(shm_->memory());
- }
- 
- size_t RefCountedSharedMemory::size() const {
-   return size_;
- }
- 
-+RefCountedSharedMemoryMapping::RefCountedSharedMemoryMapping(
-+    ReadOnlySharedMemoryMapping mapping)
-+    : mapping_(std::move(mapping)), size_(mapping_.size()) {
-+  DCHECK_GT(size_, 0U);
-+}
-+
-+RefCountedSharedMemoryMapping::~RefCountedSharedMemoryMapping() = default;
-+
-+const unsigned char* RefCountedSharedMemoryMapping::front() const {
-+  return static_cast<const unsigned char*>(mapping_.memory());
-+}
-+
-+size_t RefCountedSharedMemoryMapping::size() const {
-+  return size_;
-+}
-+
-+// static
-+scoped_refptr<RefCountedSharedMemoryMapping>
-+RefCountedSharedMemoryMapping::CreateFromWholeRegion(
-+    const ReadOnlySharedMemoryRegion& region) {
-+  ReadOnlySharedMemoryMapping mapping = region.Map();
-+  if (!mapping.IsValid())
-+    return nullptr;
-+  return MakeRefCounted<RefCountedSharedMemoryMapping>(std::move(mapping));
-+}
-+
- }  //  namespace base
-diff --git a/base/memory/ref_counted_memory.h b/base/memory/ref_counted_memory.h
-index 82a3eeb..92a7d7b 100644
---- a/base/memory/ref_counted_memory.h
-+++ b/base/memory/ref_counted_memory.h
-@@ -15,9 +15,12 @@
- #include "base/macros.h"
- #include "base/memory/ref_counted.h"
- #include "base/memory/shared_memory.h"
-+#include "base/memory/shared_memory_mapping.h"
- 
- namespace base {
- 
-+class ReadOnlySharedMemoryRegion;
-+
- // A generic interface to memory. This object is reference counted because most
- // of its subclasses own the data they carry, and this interface needs to
- // support heterogeneous containers of these different types of memory.
-@@ -138,8 +141,8 @@
-   DISALLOW_COPY_AND_ASSIGN(RefCountedString);
- };
- 
--// An implementation of RefCountedMemory, where the bytes are stored in shared
--// memory.
-+// An implementation of RefCountedMemory, where the bytes are stored in
-+// SharedMemory.
- class BASE_EXPORT RefCountedSharedMemory : public RefCountedMemory {
-  public:
-   // Constructs a RefCountedMemory object by taking ownership of an already
-@@ -159,6 +162,32 @@
-   DISALLOW_COPY_AND_ASSIGN(RefCountedSharedMemory);
- };
- 
-+// An implementation of RefCountedMemory, where the bytes are stored in
-+// ReadOnlySharedMemoryMapping.
-+class BASE_EXPORT RefCountedSharedMemoryMapping : public RefCountedMemory {
-+ public:
-+  // Constructs a RefCountedMemory object by taking ownership of an already
-+  // mapped ReadOnlySharedMemoryMapping object.
-+  explicit RefCountedSharedMemoryMapping(ReadOnlySharedMemoryMapping mapping);
-+
-+  // Convenience method to map all of |region| and take ownership of the
-+  // mapping. Returns an empty scoped_refptr if the map operation fails.
-+  static scoped_refptr<RefCountedSharedMemoryMapping> CreateFromWholeRegion(
-+      const ReadOnlySharedMemoryRegion& region);
-+
-+  // RefCountedMemory:
-+  const unsigned char* front() const override;
-+  size_t size() const override;
-+
-+ private:
-+  ~RefCountedSharedMemoryMapping() override;
-+
-+  const ReadOnlySharedMemoryMapping mapping_;
-+  const size_t size_;
-+
-+  DISALLOW_COPY_AND_ASSIGN(RefCountedSharedMemoryMapping);
-+};
-+
- }  // namespace base
- 
- #endif  // BASE_MEMORY_REF_COUNTED_MEMORY_H_
-diff --git a/base/memory/ref_counted_memory_unittest.cc b/base/memory/ref_counted_memory_unittest.cc
-index 43f7bbe..b7498f9 100644
---- a/base/memory/ref_counted_memory_unittest.cc
-+++ b/base/memory/ref_counted_memory_unittest.cc
-@@ -8,6 +8,7 @@
- 
- #include <utility>
- 
-+#include "base/memory/read_only_shared_memory_region.h"
- #include "testing/gmock/include/gmock/gmock.h"
- #include "testing/gtest/include/gtest/gtest.h"
- 
-@@ -86,6 +87,39 @@
-   EXPECT_EQ('_', mem->front()[9]);
- }
- 
-+TEST(RefCountedMemoryUnitTest, RefCountedSharedMemoryMapping) {
-+  static const char kData[] = "mem_region_dummy_data";
-+  scoped_refptr<RefCountedSharedMemoryMapping> mem;
-+  {
-+    MappedReadOnlyRegion region =
-+        ReadOnlySharedMemoryRegion::Create(sizeof(kData));
-+    ReadOnlySharedMemoryMapping ro_mapping = region.region.Map();
-+    WritableSharedMemoryMapping rw_mapping = std::move(region.mapping);
-+    ASSERT_TRUE(rw_mapping.IsValid());
-+    memcpy(rw_mapping.memory(), kData, sizeof(kData));
-+    mem = MakeRefCounted<RefCountedSharedMemoryMapping>(std::move(ro_mapping));
-+  }
-+
-+  ASSERT_LE(sizeof(kData), mem->size());
-+  EXPECT_EQ('e', mem->front()[1]);
-+  EXPECT_EQ('m', mem->front()[2]);
-+  EXPECT_EQ('o', mem->front()[8]);
-+
-+  {
-+    MappedReadOnlyRegion region =
-+        ReadOnlySharedMemoryRegion::Create(sizeof(kData));
-+    WritableSharedMemoryMapping rw_mapping = std::move(region.mapping);
-+    ASSERT_TRUE(rw_mapping.IsValid());
-+    memcpy(rw_mapping.memory(), kData, sizeof(kData));
-+    mem = RefCountedSharedMemoryMapping::CreateFromWholeRegion(region.region);
-+  }
-+
-+  ASSERT_LE(sizeof(kData), mem->size());
-+  EXPECT_EQ('_', mem->front()[3]);
-+  EXPECT_EQ('r', mem->front()[4]);
-+  EXPECT_EQ('i', mem->front()[7]);
-+}
-+
- TEST(RefCountedMemoryUnitTest, Equals) {
-   std::string s1("same");
-   scoped_refptr<RefCountedMemory> mem1 = RefCountedString::TakeString(&s1);
-diff --git a/chrome/browser/printing/print_preview_message_handler.cc b/chrome/browser/printing/print_preview_message_handler.cc
-index 3e88490b..d00c7d19 100644
---- a/chrome/browser/printing/print_preview_message_handler.cc
-+++ b/chrome/browser/printing/print_preview_message_handler.cc
-@@ -268,28 +268,30 @@
-     int page_number,
-     int request_id,
-     mojom::PdfCompositor::Status status,
--    mojo::ScopedSharedBufferHandle handle) {
-+    base::ReadOnlySharedMemoryRegion region) {
-   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-   if (status != mojom::PdfCompositor::Status::SUCCESS) {
-     DLOG(ERROR) << "Compositing pdf failed with error " << status;
-     return;
+diff --git a/content/renderer/media/stream/webmediaplayer_ms_unittest.cc b/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
+index bf66efe..00933375 100644
+--- a/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
++++ b/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
+@@ -555,14 +555,13 @@
+   blink::WebMediaPlayer::DisplayType DisplayType() const override {
+     return blink::WebMediaPlayer::DisplayType::kInline;
    }
--  NotifyUIPreviewPageReady(page_number, request_id,
--                           GetDataFromMojoHandle(std::move(handle)));
-+  NotifyUIPreviewPageReady(
-+      page_number, request_id,
-+      base::RefCountedSharedMemoryMapping::CreateFromWholeRegion(region));
- }
++  bool IsInAutoPIP() const override { return false; }
+   void ActivateViewportIntersectionMonitoring(bool activate) override {}
+   void MediaRemotingStarted(
+       const blink::WebString& remote_device_friendly_name) override {}
+   void MediaRemotingStopped(
+       blink::WebLocalizedString::Name error_msg) override {}
+-  void PictureInPictureStarted() override {}
+   void PictureInPictureStopped() override {}
+-  bool IsInPictureInPictureMode() override { return false; }
  
- void PrintPreviewMessageHandler::OnCompositePdfDocumentDone(
-     int page_count,
-     int request_id,
-     mojom::PdfCompositor::Status status,
--    mojo::ScopedSharedBufferHandle handle) {
-+    base::ReadOnlySharedMemoryRegion region) {
-   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-   if (status != mojom::PdfCompositor::Status::SUCCESS) {
-     DLOG(ERROR) << "Compositing pdf failed with error " << status;
-     return;
+   // Implementation of cc::VideoFrameProvider::Client
+   void StopUsingProvider() override;
+diff --git a/media/blink/webmediaplayer_impl.cc b/media/blink/webmediaplayer_impl.cc
+index 82d7964..a3fc8994 100644
+--- a/media/blink/webmediaplayer_impl.cc
++++ b/media/blink/webmediaplayer_impl.cc
+@@ -331,7 +331,10 @@
+   client_->MediaRemotingStopped(
+       blink::WebLocalizedString::kMediaRemotingStopNoText);
+ 
+-  if (client_->IsInPictureInPictureMode())
++  // If running in Picture-in-Picture but not in auto-pip, notify the player.
++  if (client_->DisplayType() ==
++          WebMediaPlayer::DisplayType::kPictureInPicture &&
++      !client_->IsInAutoPIP())
+     ExitPictureInPicture(base::DoNothing());
+ 
+   if (!surface_layer_for_video_enabled_ && video_layer_) {
+@@ -415,7 +418,10 @@
+   // disabled.
+   // The viz::SurfaceId may be updated when the video begins playback or when
+   // the size of the video changes.
+-  if (client_ && client_->IsInPictureInPictureMode()) {
++  if (client_ &&
++      client_->DisplayType() ==
++          WebMediaPlayer::DisplayType::kPictureInPicture &&
++      !client_->IsInAutoPIP()) {
+     delegate_->DidPictureInPictureSurfaceChange(
+         delegate_id_, surface_id, pipeline_metadata_.natural_size);
    }
--  NotifyUIPreviewDocumentReady(page_count, request_id,
--                               GetDataFromMojoHandle(std::move(handle)));
-+  NotifyUIPreviewDocumentReady(
-+      page_count, request_id,
-+      base::RefCountedSharedMemoryMapping::CreateFromWholeRegion(region));
- }
- 
- bool PrintPreviewMessageHandler::OnMessageReceived(
-diff --git a/chrome/browser/printing/print_preview_message_handler.h b/chrome/browser/printing/print_preview_message_handler.h
-index 695cb7f..34a9650 100644
---- a/chrome/browser/printing/print_preview_message_handler.h
-+++ b/chrome/browser/printing/print_preview_message_handler.h
-@@ -7,6 +7,7 @@
- 
- #include "base/compiler_specific.h"
- #include "base/macros.h"
-+#include "base/memory/read_only_shared_memory_region.h"
- #include "base/memory/ref_counted_memory.h"
- #include "base/memory/weak_ptr.h"
- #include "components/printing/service/public/interfaces/pdf_compositor.mojom.h"
-@@ -88,11 +89,11 @@
-   void OnCompositePdfPageDone(int page_number,
-                               int request_id,
-                               mojom::PdfCompositor::Status status,
--                              mojo::ScopedSharedBufferHandle handle);
-+                              base::ReadOnlySharedMemoryRegion region);
-   void OnCompositePdfDocumentDone(int page_count,
-                                   int request_id,
-                                   mojom::PdfCompositor::Status status,
--                                  mojo::ScopedSharedBufferHandle handle);
-+                                  base::ReadOnlySharedMemoryRegion region);
- 
-   base::WeakPtrFactory<PrintPreviewMessageHandler> weak_ptr_factory_;
- 
-diff --git a/chrome/browser/printing/print_view_manager_base.cc b/chrome/browser/printing/print_view_manager_base.cc
-index 4853d2b9..0fdbc543 100644
---- a/chrome/browser/printing/print_view_manager_base.cc
-+++ b/chrome/browser/printing/print_view_manager_base.cc
-@@ -284,7 +284,7 @@
- void PrintViewManagerBase::OnComposePdfDone(
-     const PrintHostMsg_DidPrintDocument_Params& params,
-     mojom::PdfCompositor::Status status,
--    mojo::ScopedSharedBufferHandle handle) {
-+    base::ReadOnlySharedMemoryRegion region) {
-   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-   if (status != mojom::PdfCompositor::Status::SUCCESS) {
-     DLOG(ERROR) << "Compositing pdf failed with error " << status;
-@@ -294,14 +294,11 @@
-   if (!print_job_->document())
-     return;
- 
--  std::unique_ptr<base::SharedMemory> shared_buf =
--      GetShmFromMojoHandle(std::move(handle));
--  if (!shared_buf)
-+  scoped_refptr<base::RefCountedSharedMemoryMapping> data =
-+      base::RefCountedSharedMemoryMapping::CreateFromWholeRegion(region);
-+  if (!data)
-     return;
- 
--  size_t size = shared_buf->mapped_size();
--  auto data = base::MakeRefCounted<base::RefCountedSharedMemory>(
--      std::move(shared_buf), size);
-   PrintDocument(data, params.page_size, params.content_area,
-                 params.physical_offsets);
- }
-diff --git a/chrome/browser/printing/print_view_manager_base.h b/chrome/browser/printing/print_view_manager_base.h
-index 6e486c2..553a7fe 100644
---- a/chrome/browser/printing/print_view_manager_base.h
-+++ b/chrome/browser/printing/print_view_manager_base.h
-@@ -8,6 +8,7 @@
- #include <memory>
- 
- #include "base/macros.h"
-+#include "base/memory/read_only_shared_memory_region.h"
- #include "base/memory/scoped_refptr.h"
- #include "base/memory/weak_ptr.h"
- #include "base/strings/string16.h"
-@@ -18,7 +19,6 @@
- #include "components/printing/service/public/interfaces/pdf_compositor.mojom.h"
- #include "content/public/browser/notification_observer.h"
- #include "content/public/browser/notification_registrar.h"
--#include "mojo/public/cpp/system/platform_handle.h"
- #include "printing/buildflags/buildflags.h"
- 
- struct PrintHostMsg_DidPrintDocument_Params;
-@@ -117,7 +117,7 @@
-   // IPC message handlers for service.
-   void OnComposePdfDone(const PrintHostMsg_DidPrintDocument_Params& params,
-                         mojom::PdfCompositor::Status status,
--                        mojo::ScopedSharedBufferHandle handle);
-+                        base::ReadOnlySharedMemoryRegion region);
- 
- // Helpers for PrintForPrintPreview();
- #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-diff --git a/components/printing/browser/print_composite_client.cc b/components/printing/browser/print_composite_client.cc
-index 65f6635..4f4d8a1 100644
---- a/components/printing/browser/print_composite_client.cc
-+++ b/components/printing/browser/print_composite_client.cc
-@@ -201,7 +201,7 @@
- void PrintCompositeClient::OnDidCompositePageToPdf(
-     printing::mojom::PdfCompositor::CompositePageToPdfCallback callback,
-     printing::mojom::PdfCompositor::Status status,
--    mojo::ScopedSharedBufferHandle handle) {
-+    base::ReadOnlySharedMemoryRegion region) {
-   // Due to https://crbug.com/742517, we can not add and use COUNT for enums in
-   // mojo.
-   UMA_HISTOGRAM_ENUMERATION(
-@@ -209,14 +209,14 @@
-       static_cast<int32_t>(
-           printing::mojom::PdfCompositor::Status::COMPOSTING_FAILURE) +
-           1);
--  std::move(callback).Run(status, std::move(handle));
-+  std::move(callback).Run(status, std::move(region));
- }
- 
- void PrintCompositeClient::OnDidCompositeDocumentToPdf(
-     int document_cookie,
-     printing::mojom::PdfCompositor::CompositeDocumentToPdfCallback callback,
-     printing::mojom::PdfCompositor::Status status,
--    mojo::ScopedSharedBufferHandle handle) {
-+    base::ReadOnlySharedMemoryRegion region) {
-   RemoveCompositeRequest(document_cookie);
-   // Clear all stored printed subframes.
-   printed_subframes_.erase(document_cookie);
-@@ -228,7 +228,7 @@
-       static_cast<int32_t>(
-           printing::mojom::PdfCompositor::Status::COMPOSTING_FAILURE) +
-           1);
--  std::move(callback).Run(status, std::move(handle));
-+  std::move(callback).Run(status, std::move(region));
- }
- 
- ContentToFrameMap PrintCompositeClient::ConvertContentInfoMap(
-diff --git a/components/printing/browser/print_composite_client.h b/components/printing/browser/print_composite_client.h
-index 2d23b45..d38111c9 100644
---- a/components/printing/browser/print_composite_client.h
-+++ b/components/printing/browser/print_composite_client.h
-@@ -95,13 +95,13 @@
-   void OnDidCompositePageToPdf(
-       printing::mojom::PdfCompositor::CompositePageToPdfCallback callback,
-       printing::mojom::PdfCompositor::Status status,
--      mojo::ScopedSharedBufferHandle handle);
-+      base::ReadOnlySharedMemoryRegion region);
- 
-   void OnDidCompositeDocumentToPdf(
-       int document_cookie,
-       printing::mojom::PdfCompositor::CompositeDocumentToPdfCallback callback,
-       printing::mojom::PdfCompositor::Status status,
--      mojo::ScopedSharedBufferHandle handle);
-+      base::ReadOnlySharedMemoryRegion region);
- 
-   // Get the request or create a new one if none exists.
-   // Since printed pages always share content with it document, they share the
-diff --git a/components/printing/service/pdf_compositor_impl.cc b/components/printing/service/pdf_compositor_impl.cc
-index 387e833..c70ff33 100644
---- a/components/printing/service/pdf_compositor_impl.cc
-+++ b/components/printing/service/pdf_compositor_impl.cc
-@@ -4,7 +4,9 @@
- 
- #include "components/printing/service/pdf_compositor_impl.h"
- 
-+#include <algorithm>
- #include <tuple>
-+#include <utility>
- 
- #include "base/logging.h"
- #include "base/memory/shared_memory_handle.h"
-@@ -197,7 +199,7 @@
-     base::Optional<uint32_t> page_num,
-     std::unique_ptr<base::SharedMemory> shared_mem,
-     const ContentToFrameMap& subframe_content_map,
--    mojo::ScopedSharedBufferHandle* handle) {
-+    base::ReadOnlySharedMemoryRegion* region) {
-   DeserializationContext subframes =
-       GetDeserializationContext(subframe_content_map);
- 
-@@ -226,14 +228,24 @@
-   }
-   doc->close();
- 
--  *handle = mojo::SharedBufferHandle::Create(wstream.bytesWritten());
--  DCHECK((*handle).is_valid());
-+  const size_t size = wstream.bytesWritten();
-+  mojo::ScopedSharedBufferHandle handle =
-+      mojo::SharedBufferHandle::Create(size);
-+  mojo::ScopedSharedBufferHandle readonly_handle;
-+  if (handle.is_valid()) {
-+    mojo::ScopedSharedBufferMapping mapping = handle->Map(size);
-+    if (mapping) {
-+      wstream.copyToAndReset(mapping.get());
-+      readonly_handle =
-+          handle->Clone(mojo::SharedBufferHandle::AccessMode::READ_ONLY);
-+    }
-+  }
-+  if (!readonly_handle.is_valid()) {
-+    DLOG(ERROR) << "CompositeToPdf: Cannot create new shared memory region.";
-+    return mojom::PdfCompositor::Status::HANDLE_MAP_ERROR;
-+  }
- 
--  mojo::ScopedSharedBufferMapping mapping =
--      (*handle)->Map(wstream.bytesWritten());
--  DCHECK(mapping);
--  wstream.copyToAndReset(mapping.get());
+@@ -801,9 +807,6 @@
+   delegate_->DidPictureInPictureModeStart(delegate_id_, pip_surface_id_,
+                                           pipeline_metadata_.natural_size,
+                                           std::move(callback));
 -
-+  *region = mojo::UnwrapReadOnlySharedMemoryRegion(std::move(readonly_handle));
-   return mojom::PdfCompositor::Status::SUCCESS;
+-  if (client_)
+-    client_->PictureInPictureStarted();
  }
  
-@@ -282,11 +294,11 @@
-     std::unique_ptr<base::SharedMemory> serialized_content,
-     const ContentToFrameMap& subframe_content_map,
-     CompositeToPdfCallback callback) {
--  mojo::ScopedSharedBufferHandle handle;
-+  base::ReadOnlySharedMemoryRegion region;
-   auto status =
-       CompositeToPdf(frame_guid, page_num, std::move(serialized_content),
--                     subframe_content_map, &handle);
--  std::move(callback).Run(status, std::move(handle));
-+                     subframe_content_map, &region);
-+  std::move(callback).Run(status, std::move(region));
- }
+ void WebMediaPlayerImpl::ExitPictureInPicture(
+@@ -821,7 +824,9 @@
+ void WebMediaPlayerImpl::RegisterPictureInPictureWindowResizeCallback(
+     blink::WebMediaPlayer::PipWindowResizedCallback callback) {
+   DCHECK(pip_surface_id_.is_valid());
+-  DCHECK(client_->IsInPictureInPictureMode());
++  DCHECK(client_->DisplayType() ==
++             WebMediaPlayer::DisplayType::kPictureInPicture &&
++         !client_->IsInAutoPIP());
  
- PdfCompositorImpl::FrameContentInfo::FrameContentInfo(
-diff --git a/components/printing/service/pdf_compositor_impl.h b/components/printing/service/pdf_compositor_impl.h
-index 7296024..59bdead 100644
---- a/components/printing/service/pdf_compositor_impl.h
-+++ b/components/printing/service/pdf_compositor_impl.h
-@@ -13,12 +13,12 @@
- #include "base/containers/flat_map.h"
- #include "base/containers/flat_set.h"
- #include "base/macros.h"
-+#include "base/memory/read_only_shared_memory_region.h"
- #include "base/memory/ref_counted_memory.h"
- #include "base/memory/shared_memory.h"
- #include "base/optional.h"
- #include "components/printing/service/public/cpp/pdf_service_mojo_types.h"
- #include "components/printing/service/public/interfaces/pdf_compositor.mojom.h"
--#include "mojo/public/cpp/system/buffer.h"
- #include "services/service_manager/public/cpp/service_context_ref.h"
- #include "third_party/skia/include/core/SkPicture.h"
- #include "third_party/skia/include/core/SkRefCnt.h"
-@@ -57,7 +57,7 @@
-   // mojom::PdfCompositor::CompositeDocumentToPdfCallback.
-   using CompositeToPdfCallback =
-       base::OnceCallback<void(PdfCompositor::Status,
--                              mojo::ScopedSharedBufferHandle)>;
-+                              base::ReadOnlySharedMemoryRegion)>;
+   delegate_->RegisterPictureInPictureWindowResizeCallback(delegate_id_,
+                                                           std::move(callback));
+@@ -2967,7 +2972,7 @@
+   DCHECK(main_task_runner_->BelongsToCurrentThread());
  
-   // Make this function virtual so tests can override it.
-   virtual void FulfillRequest(
-@@ -164,7 +164,7 @@
-       base::Optional<uint32_t> page_num,
-       std::unique_ptr<base::SharedMemory> shared_mem,
-       const ContentToFrameMap& subframe_content_map,
--      mojo::ScopedSharedBufferHandle* handle);
-+      base::ReadOnlySharedMemoryRegion* region);
+   // Don't optimize Picture-in-Picture players.
+-  if (client_->IsInPictureInPictureMode())
++  if (client_->DisplayType() == WebMediaPlayer::DisplayType::kPictureInPicture)
+     return false;
  
-   // Composite the content of a subframe.
-   sk_sp<SkPicture> CompositeSubframe(uint64_t frame_guid);
-diff --git a/components/printing/service/pdf_compositor_impl_unittest.cc b/components/printing/service/pdf_compositor_impl_unittest.cc
-index f2b24b9..3e9cc9d 100644
---- a/components/printing/service/pdf_compositor_impl_unittest.cc
-+++ b/components/printing/service/pdf_compositor_impl_unittest.cc
-@@ -3,6 +3,7 @@
- // found in the LICENSE file.
+ #if defined(OS_ANDROID)  // WMPI_CAST
+diff --git a/media/blink/webmediaplayer_impl_unittest.cc b/media/blink/webmediaplayer_impl_unittest.cc
+index a109241..d8d002d 100644
+--- a/media/blink/webmediaplayer_impl_unittest.cc
++++ b/media/blink/webmediaplayer_impl_unittest.cc
+@@ -168,12 +168,12 @@
+   MOCK_METHOD0(HasNativeControls, bool());
+   MOCK_METHOD0(IsAudioElement, bool());
+   MOCK_CONST_METHOD0(DisplayType, blink::WebMediaPlayer::DisplayType());
++  MOCK_CONST_METHOD0(IsInAutoPIP, bool());
+   MOCK_METHOD1(ActivateViewportIntersectionMonitoring, void(bool));
+   MOCK_METHOD1(MediaRemotingStarted, void(const blink::WebString&));
+   MOCK_METHOD1(MediaRemotingStopped, void(blink::WebLocalizedString::Name));
+   MOCK_METHOD0(PictureInPictureStarted, void());
+   MOCK_METHOD0(PictureInPictureStopped, void());
+-  MOCK_METHOD0(IsInPictureInPictureMode, bool());
+   MOCK_CONST_METHOD0(CouldPlayIfEnoughData, bool());
  
- #include <memory>
-+#include <utility>
+   void set_is_autoplaying_muted(bool value) { is_autoplaying_muted_ = value; }
+@@ -1349,7 +1349,9 @@
+ TEST_F(WebMediaPlayerImplTest, PictureInPictureTriggerCallback) {
+   InitializeWebMediaPlayerImpl();
  
- #include "base/callback.h"
- #include "base/run_loop.h"
-@@ -52,7 +53,7 @@
-   }
+-  EXPECT_CALL(client_, IsInPictureInPictureMode()).WillRepeatedly(Return(true));
++  EXPECT_CALL(client_, DisplayType())
++      .WillRepeatedly(
++          Return(blink::WebMediaPlayer::DisplayType::kPictureInPicture));
+   EXPECT_CALL(delegate_,
+               DidPictureInPictureSurfaceChange(delegate_.player_id(),
+                                                surface_id_, GetNaturalSize()))
+@@ -1427,8 +1429,9 @@
+     SetDuration(base::TimeDelta::FromSeconds(GetDurationSec()));
  
-   void OnCompositeToPdfCallback(mojom::PdfCompositor::Status status,
--                                mojo::ScopedSharedBufferHandle handle) {
-+                                base::ReadOnlySharedMemoryRegion region) {
-     // A stub for testing, no implementation.
-   }
+     if (IsPictureInPictureOn()) {
+-      EXPECT_CALL(client_, IsInPictureInPictureMode())
+-          .WillRepeatedly(Return(true));
++      EXPECT_CALL(client_, DisplayType())
++          .WillRepeatedly(
++              Return(blink::WebMediaPlayer::DisplayType::kPictureInPicture));
  
-diff --git a/components/printing/service/pdf_compositor_service_unittest.cc b/components/printing/service/pdf_compositor_service_unittest.cc
-index 9875185..7be3057 100644
---- a/components/printing/service/pdf_compositor_service_unittest.cc
-+++ b/components/printing/service/pdf_compositor_service_unittest.cc
-@@ -3,6 +3,7 @@
- // found in the LICENSE file.
+       wmpi_->OnSurfaceIdUpdated(surface_id_);
+     }
+diff --git a/third_party/WebKit/LayoutTests/media/picture-in-picture/picture-in-picture-interstitial.html b/third_party/WebKit/LayoutTests/media/picture-in-picture/picture-in-picture-interstitial.html
+index 02d66f5..3889c41 100644
+--- a/third_party/WebKit/LayoutTests/media/picture-in-picture/picture-in-picture-interstitial.html
++++ b/third_party/WebKit/LayoutTests/media/picture-in-picture/picture-in-picture-interstitial.html
+@@ -19,10 +19,12 @@
  
- #include <memory>
-+#include <utility>
+     checkPictureInPictureInterstitialDoesNotExist(video);
  
- #include "base/callback.h"
- #include "base/files/file_path.h"
-@@ -88,12 +89,13 @@
-   PdfCompositorServiceTest() : ServiceTest("pdf_compositor_service_unittest") {}
-   ~PdfCompositorServiceTest() override {}
+-    clickPictureInPictureButton(video, t.step_func_done(() => {
++    video.addEventListener('enterpictureinpicture', t.step_func_done(() => {
+       assert_true(isPictureInPictureInterstitialVisible(video),
+-          "Interstitial should be visible when button is clicked");
++          "Interstitial should be visible when video enters Picture-in-Picture");
+     }));
++
++    clickPictureInPictureButton(video);
+   });
+ });
+ </script>
+diff --git a/third_party/blink/public/platform/web_media_player_client.h b/third_party/blink/public/platform/web_media_player_client.h
+index 383c411..9db1475 100644
+--- a/third_party/blink/public/platform/web_media_player_client.h
++++ b/third_party/blink/public/platform/web_media_player_client.h
+@@ -132,15 +132,9 @@
+   // to a localized string that explains the reason as user-readable text.
+   virtual void MediaRemotingStopped(WebLocalizedString::Name error_msg) = 0;
  
--  MOCK_METHOD1(CallbackOnCompositeSuccess, void(mojo::SharedBufferHandle));
-+  MOCK_METHOD1(CallbackOnCompositeSuccess,
-+               void(const base::ReadOnlySharedMemoryRegion&));
-   MOCK_METHOD1(CallbackOnCompositeStatus, void(mojom::PdfCompositor::Status));
-   void OnCompositeToPdfCallback(mojom::PdfCompositor::Status status,
--                                mojo::ScopedSharedBufferHandle handle) {
-+                                base::ReadOnlySharedMemoryRegion region) {
-     if (status == mojom::PdfCompositor::Status::SUCCESS)
--      CallbackOnCompositeSuccess(handle.get());
-+      CallbackOnCompositeSuccess(region);
-     else
-       CallbackOnCompositeStatus(status);
-     run_loop_->Quit();
-diff --git a/components/printing/service/public/cpp/pdf_service_mojo_utils.cc b/components/printing/service/public/cpp/pdf_service_mojo_utils.cc
-index 01ec77f7..68bc34a 100644
---- a/components/printing/service/public/cpp/pdf_service_mojo_utils.cc
-+++ b/components/printing/service/public/cpp/pdf_service_mojo_utils.cc
-@@ -6,7 +6,6 @@
- 
- #include <utility>
- 
--#include "base/memory/ref_counted_memory.h"
- #include "base/memory/shared_memory.h"
- #include "mojo/public/cpp/system/platform_handle.h"
- 
-@@ -35,16 +34,4 @@
-   return shm;
- }
- 
--scoped_refptr<base::RefCountedMemory> GetDataFromMojoHandle(
--    mojo::ScopedSharedBufferHandle handle) {
--  std::unique_ptr<base::SharedMemory> shm =
--      GetShmFromMojoHandle(std::move(handle));
--  if (!shm)
--    return nullptr;
+-  // Informs that Picture-in-Picture mode has started for the media element.
+-  virtual void PictureInPictureStarted() = 0;
 -
--  size_t size = shm->mapped_size();
--  return base::MakeRefCounted<base::RefCountedSharedMemory>(std::move(shm),
--                                                            size);
+   // Informs that Picture-in-Picture mode has stopped for the media element.
+   virtual void PictureInPictureStopped() = 0;
+ 
+-  // Returns whether the media element is in Picture-in-Picture mode.
+-  virtual bool IsInPictureInPictureMode() = 0;
+-
+   // Returns whether the media element has native controls. It does not mean
+   // that the controls are currently visible.
+   virtual bool HasNativeControls() = 0;
+@@ -170,6 +164,10 @@
+   // WebMediaPlayer::kReadyStateHaveFutureData.
+   virtual bool CouldPlayIfEnoughData() const = 0;
+ 
++  // Returns whether the playback is in auto-pip mode which does not have th
++  // behavior as regular Picture-in-Picture.
++  virtual bool IsInAutoPIP() const = 0;
++
+  protected:
+   ~WebMediaPlayerClient() = default;
+ };
+diff --git a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+index eb11df6..0112287 100644
+--- a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
++++ b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+@@ -47,6 +47,9 @@
+   // Should be called when an element has exited Picture-in-Picture.
+   virtual void OnExitedPictureInPicture(ScriptPromiseResolver*) = 0;
+ 
++  // Returns whether the given element is currently in Picture-in-Picture.
++  virtual bool IsPictureInPictureElement(const Element*) const = 0;
++
+   void Trace(blink::Visitor*) override;
+ 
+  protected:
+diff --git a/third_party/blink/renderer/core/html/media/html_audio_element.h b/third_party/blink/renderer/core/html/media/html_audio_element.h
+index 245427d..569b7b5 100644
+--- a/third_party/blink/renderer/core/html/media/html_audio_element.h
++++ b/third_party/blink/renderer/core/html/media/html_audio_element.h
+@@ -48,9 +48,7 @@
+   // WebMediaPlayerClient implementation.
+   void MediaRemotingStarted(
+       const WebString& remote_device_friendly_name) override {}
+-  void PictureInPictureStarted() override {}
+   void PictureInPictureStopped() override {}
+-  bool IsInPictureInPictureMode() override { return false; }
+   void MediaRemotingStopped(WebLocalizedString::Name error_msg) override {}
+ 
+  private:
+diff --git a/third_party/blink/renderer/core/html/media/html_media_element.h b/third_party/blink/renderer/core/html/media/html_media_element.h
+index ef680a2..6de68a7 100644
+--- a/third_party/blink/renderer/core/html/media/html_media_element.h
++++ b/third_party/blink/renderer/core/html/media/html_media_element.h
+@@ -440,6 +440,7 @@
+   }
+   gfx::ColorSpace TargetColorSpace() override;
+   bool WasAutoplayInitiated() override;
++  bool IsInAutoPIP() const override { return false; }
+ 
+   void LoadTimerFired(TimerBase*);
+   void ProgressEventTimerFired(TimerBase*);
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.cc b/third_party/blink/renderer/core/html/media/html_video_element.cc
+index 5229071..0b654ea 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.cc
++++ b/third_party/blink/renderer/core/html/media/html_video_element.cc
+@@ -259,7 +259,7 @@
+ // TODO(zqzhang): this callback could be used to hide native controls instead of
+ // using a settings. See `HTMLMediaElement::onMediaControlsEnabledChange`.
+ void HTMLVideoElement::OnBecamePersistentVideo(bool value) {
+-  is_picture_in_picture_ = value;
++  is_auto_picture_in_picture_ = value;
+ 
+   if (value) {
+     // Record the type of video. If it is already fullscreen, it is a video with
+@@ -545,7 +545,25 @@
+          PictureInPictureController::Status::kEnabled;
+ }
+ 
+-void HTMLVideoElement::PictureInPictureStarted() {
++void HTMLVideoElement::PictureInPictureStopped() {
++  PictureInPictureController::From(GetDocument())
++      .OnExitedPictureInPicture(nullptr);
++}
++
++WebMediaPlayer::DisplayType HTMLVideoElement::DisplayType() const {
++  if (is_auto_picture_in_picture_ ||
++      PictureInPictureController::From(GetDocument())
++          .IsPictureInPictureElement(this)) {
++    return WebMediaPlayer::DisplayType::kPictureInPicture;
++  }
++  return HTMLMediaElement::DisplayType();
++}
++
++bool HTMLVideoElement::IsInAutoPIP() const {
++  return is_auto_picture_in_picture_;
++}
++
++void HTMLVideoElement::OnEnteredPictureInPicture() {
+   if (!picture_in_picture_interstitial_) {
+     picture_in_picture_interstitial_ = new PictureInPictureInterstitial(*this);
+     ShadowRoot& shadow_root = EnsureUserAgentShadowRoot();
+@@ -554,25 +572,17 @@
+     HTMLMediaElement::AssertShadowRootChildren(shadow_root);
+   }
+   picture_in_picture_interstitial_->Show();
++
++  DCHECK(GetWebMediaPlayer());
++  GetWebMediaPlayer()->OnDisplayTypeChanged(DisplayType());
+ }
+ 
+-void HTMLVideoElement::PictureInPictureStopped() {
++void HTMLVideoElement::OnExitedPictureInPicture() {
+   if (picture_in_picture_interstitial_)
+     picture_in_picture_interstitial_->Hide();
+ 
+-  PictureInPictureController::From(GetDocument())
+-      .OnExitedPictureInPicture(nullptr);
 -}
 -
- }  // namespace printing
-diff --git a/components/printing/service/public/cpp/pdf_service_mojo_utils.h b/components/printing/service/public/cpp/pdf_service_mojo_utils.h
-index d7b5547..50b0c71 100644
---- a/components/printing/service/public/cpp/pdf_service_mojo_utils.h
-+++ b/components/printing/service/public/cpp/pdf_service_mojo_utils.h
-@@ -7,11 +7,9 @@
- 
- #include <memory>
- 
--#include "base/memory/scoped_refptr.h"
- #include "mojo/public/cpp/system/buffer.h"
- 
- namespace base {
--class RefCountedMemory;
- class SharedMemory;
- }  // namespace base
- 
-@@ -20,9 +18,6 @@
- std::unique_ptr<base::SharedMemory> GetShmFromMojoHandle(
-     mojo::ScopedSharedBufferHandle handle);
- 
--scoped_refptr<base::RefCountedMemory> GetDataFromMojoHandle(
--    mojo::ScopedSharedBufferHandle handle);
+-bool HTMLVideoElement::IsInPictureInPictureMode() {
+-  return picture_in_picture_interstitial_ &&
+-         picture_in_picture_interstitial_->IsVisible();
+-}
 -
- }  // namespace printing
- 
- #endif  // COMPONENTS_PRINTING_SERVICE_PUBLIC_CPP_PDF_SERVICE_MOJO_UTILS_H_
-diff --git a/components/printing/service/public/interfaces/BUILD.gn b/components/printing/service/public/interfaces/BUILD.gn
-index b9162a6..804ccb4 100644
---- a/components/printing/service/public/interfaces/BUILD.gn
-+++ b/components/printing/service/public/interfaces/BUILD.gn
-@@ -9,6 +9,7 @@
-     "pdf_compositor.mojom",
-   ]
-   public_deps = [
-+    "//mojo/public/mojom/base",
-     "//url/mojom:url_mojom_gurl",
-   ]
+-WebMediaPlayer::DisplayType HTMLVideoElement::DisplayType() const {
+-  if (is_picture_in_picture_)
+-    return WebMediaPlayer::DisplayType::kPictureInPicture;
+-  return HTMLMediaElement::DisplayType();
++  if (GetWebMediaPlayer())
++    GetWebMediaPlayer()->OnDisplayTypeChanged(DisplayType());
  }
-diff --git a/components/printing/service/public/interfaces/pdf_compositor.mojom b/components/printing/service/public/interfaces/pdf_compositor.mojom
-index 202d289a..934b04e 100644
---- a/components/printing/service/public/interfaces/pdf_compositor.mojom
-+++ b/components/printing/service/public/interfaces/pdf_compositor.mojom
-@@ -4,6 +4,7 @@
  
- module printing.mojom;
+ void HTMLVideoElement::AddedEventListener(
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.h b/third_party/blink/renderer/core/html/media/html_video_element.h
+index 92d75fc..4099832 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.h
++++ b/third_party/blink/renderer/core/html/media/html_video_element.h
+@@ -148,11 +148,15 @@
  
-+import "mojo/public/mojom/base/shared_memory.mojom";
- import "url/mojom/url.mojom";
+   void MediaRemotingStarted(const WebString& remote_device_friendly_name) final;
+   bool SupportsPictureInPicture() const final;
+-  void PictureInPictureStarted() final;
+   void PictureInPictureStopped() final;
+-  bool IsInPictureInPictureMode() final;
+   void MediaRemotingStopped(WebLocalizedString::Name error_msg) final;
+   WebMediaPlayer::DisplayType DisplayType() const final;
++  bool IsInAutoPIP() const final;
++
++  // Used by the PictureInPictureController as callback when the video element
++  // enters or exits Picture-in-Picture state.
++  void OnEnteredPictureInPicture();
++  void OnExitedPictureInPicture();
  
- const string kServiceName = "pdf_compositor";
-@@ -44,14 +45,16 @@
-   CompositePageToPdf(uint64 frame_guid, uint32 page_num,
-                      handle<shared_buffer> sk_handle,
-                      map<uint32, uint64> subframe_content_info)
--      => (Status status, handle<shared_buffer>? pdf_handle);
-+      => (Status status,
-+          mojo_base.mojom.ReadOnlySharedMemoryRegion? pdf_region);
+  protected:
+   // EventTarget overrides.
+@@ -194,12 +198,14 @@
  
-   // Requests to composite the entire document and convert it into a PDF file.
-   // All the arguments carry the same meaning as CompositePageToPdf() above,
-   // except this call doesn't have |page_num|.
-   CompositeDocumentToPdf(uint64 frame_guid, handle<shared_buffer> sk_handle,
-                          map<uint32, uint64> subframe_content_info)
--      => (Status status, handle<shared_buffer>? pdf_handle);
-+      => (Status status,
-+          mojo_base.mojom.ReadOnlySharedMemoryRegion? pdf_region);
+   AtomicString default_poster_url_;
  
-   // Sets the URL which is committed in the main frame of the WebContents,
-   // for use in crash diagnosis.
+-  // TODO(mlamouri): merge these later. At the moment, the former is used for
+-  // CSS rules used to hide the custom controls and the latter is used to report
+-  // the display type. It's unclear whether using the CSS rules also when native
+-  // controls are used would or would not have side effects.
++  // Represents whether the video is 'persistent'. It is used for videos with
++  // custom controls that are in auto-pip (Android). This boolean is used by a
++  // CSS rule.
+   bool is_persistent_ = false;
+-  bool is_picture_in_picture_ = false;
++
++  // Whether the video is currently in auto-pip (Android). It is not similar to
++  // a video being in regular Picture-in-Picture mode.
++  bool is_auto_picture_in_picture_ = false;
+ };
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
+index 9ca00f5..3fc1814 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
++++ b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
+@@ -101,6 +101,8 @@
+ 
+   picture_in_picture_element_ = element;
+ 
++  picture_in_picture_element_->OnEnteredPictureInPicture();
++
+   picture_in_picture_element_->DispatchEvent(
+       Event::CreateBubble(EventTypeNames::enterpictureinpicture));
+ 
+@@ -141,6 +143,8 @@
+   if (picture_in_picture_element_) {
+     HTMLVideoElement* element = picture_in_picture_element_;
+     picture_in_picture_element_ = nullptr;
++
++    element->OnExitedPictureInPicture();
+     element->DispatchEvent(
+         Event::CreateBubble(EventTypeNames::leavepictureinpicture));
+   }
+@@ -157,6 +161,13 @@
+   return scope.AdjustedElement(*picture_in_picture_element_);
+ }
+ 
++bool PictureInPictureControllerImpl::IsPictureInPictureElement(
++    const Element* element) const {
++  if (!element)
++    return false;
++  return element == picture_in_picture_element_;
++}
++
+ void PictureInPictureControllerImpl::Trace(blink::Visitor* visitor) {
+   visitor->Trace(picture_in_picture_element_);
+   visitor->Trace(picture_in_picture_window_);
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
+index 3b362bd..94c3d66 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
++++ b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
+@@ -43,9 +43,6 @@
+   // request Picture-in-Picture.
+   Status IsDocumentAllowed() const;
+ 
+-  // Implementation of PictureInPictureController.
+-  Status IsElementAllowed(const HTMLVideoElement&) const override;
+-
+   // Enter Picture-in-Picture for a video element and resolve promise.
+   void EnterPictureInPicture(HTMLVideoElement*, ScriptPromiseResolver*);
+ 
+@@ -58,12 +55,14 @@
+   // Exit Picture-in-Picture for a video element and resolve promise if any.
+   void ExitPictureInPicture(HTMLVideoElement*, ScriptPromiseResolver*);
+ 
+-  // Implementation of PictureInPictureController.
+-  void OnExitedPictureInPicture(ScriptPromiseResolver*) override;
+-
+   // Returns element currently in Picture-in-Picture if any. Null otherwise.
+   Element* PictureInPictureElement(TreeScope&) const;
+ 
++  // Implementation of PictureInPictureController.
++  void OnExitedPictureInPicture(ScriptPromiseResolver*) override;
++  Status IsElementAllowed(const HTMLVideoElement&) const override;
++  bool IsPictureInPictureElement(const Element*) const override;
++
+   void Trace(blink::Visitor*) override;
+ 
+  private:
