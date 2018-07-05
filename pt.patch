@@ -21,3 +21,24 @@
  
  namespace blink {
  
+
+--- a/third_party/blink/common/origin_policy/origin_policy.cc	2018-07-02 23:10:04.000000000 -0400
++++ b/third_party/blink/common/origin_policy/origin_policy.cc.new	2018-07-03 20:29:33.191695083 -0400
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/public/common/origin_policy/origin_policy.h"
++#include <memory>
+ 
+ #include "third_party/blink/common/origin_policy/origin_policy_parser.h"
+ 
+--- a/third_party/blink/common/origin_policy/origin_policy_parser.h	2018-07-02 23:10:04.000000000 -0400
++++ b/third_party/blink/common/origin_policy/origin_policy_parser.h.new	2018-07-03 20:29:34.198369576 -0400
+@@ -8,6 +8,7 @@
+ #include "third_party/blink/public/common/origin_policy/origin_policy.h"
+ 
+ #include <string>
++#include <memory>
+ #include "base/macros.h"
+ 
+ namespace blink {
