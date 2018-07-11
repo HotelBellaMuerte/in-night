@@ -42,3 +42,14 @@
  #include "base/macros.h"
  
  namespace blink {
+
+--- a/third_party/webrtc/modules/audio_processing/aec3/reverb_model_estimator.cc	2018-07-05 03:24:02.000000000 -0400
++++ b/third_party/webrtc/modules/audio_processing/aec3/reverb_model_estimator.cc.new	2018-07-05 17:57:39.152549112 -0400
+@@ -15,6 +15,7 @@
+ #include <memory>
+ #include <numeric>
+ 
++#include <math.h>
+ #include "api/array_view.h"
+ #include "api/audio/echo_canceller3_config.h"
+ #include "modules/audio_processing/aec3/aec3_common.h"

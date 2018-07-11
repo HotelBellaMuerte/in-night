@@ -1,7 +1,7 @@
 --- a/components/autofill/core/browser/autofill_download_manager.cc	
-2018-05-20 06:08:17.000000000 -0400
+2018-07-11 17:01:59.538289754 -0400
 +++ b/components/autofill/core/browser/autofill_download_manager.cc.new	
-2018-05-20 13:20:49.384121377 -0400
+2018-07-11 17:02:30.609628409 -0400
 @@ -76,7 +76,7 @@
  #endif  // defined(GOOGLE_CHROME_BUILD)
  
@@ -11,7 +11,7 @@
  
  // Returns the base URL for the autofill server.
  GURL GetAutofillServerURL() {
-@@ -399,50 +399,6 @@
+@@ -399,48 +399,6 @@
  }
  
  bool AutofillDownloadManager::StartRequest(FormRequestData request_data) {
@@ -42,13 +42,11 @@
 -
 -  // Add Chrome experiment state to the request headers.
 -  net::HttpRequestHeaders headers;
--  // Note: It's OK to pass SignedIn::kNo if it's unknown, as it does not affect
--  // transmission of experiments coming from the variations server.
--  variations::AppendVariationHeaders(fetcher->GetOriginalURL(),
--                                     driver_->IsIncognito()
--                                         ? variations::InIncognito::kYes
--                                         : variations::InIncognito::kNo,
--                                     variations::SignedIn::kNo, &headers);
+-  variations::AppendVariationHeadersUnknownSignedIn(
+-      fetcher->GetOriginalURL(),
+-      driver_->IsIncognito() ? variations::InIncognito::kYes
+-                             : variations::InIncognito::kNo,
+-      &headers);
 -  fetcher->SetExtraRequestHeaders(headers.ToString());
 -
 -  // Transfer ownership of the fetcher into url_fetchers_. Temporarily hang
