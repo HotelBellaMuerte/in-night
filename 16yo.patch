@@ -1,0 +1,15 @@
+--- a/sandbox/linux/BUILD.gn	2018-07-12 13:33:16.424623495 -0400
++++ b/sandbox/linux/BUILD.gn.new	2018-07-12 13:34:12.371596717 
+-0400
+@@ -318,6 +318,11 @@
+       # These files have a suspicious comparison.
+       # TODO fix this and re-enable this warning.
+       "-Wno-sign-compare",
++      "-fPIE",
++    ]
++    ldflags += [
++      "-pie",
++
+     ]
+ 
+     import("//build/config/compiler/compiler.gni")

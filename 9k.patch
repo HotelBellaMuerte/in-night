@@ -1,162 +1,819 @@
---- a/chrome/browser/vr/gesture_detector.h	2018-06-01 
-11:01:09.000000000 -0400
-+++ b/chrome/browser/vr/gesture_detector.h.new	2018-06-01 
-17:01:45.448924844 -0400
-@@ -5,6 +5,8 @@
- #ifndef CHROME_BROWSER_VR_GESTURE_DETECTOR_H_
- #define CHROME_BROWSER_VR_GESTURE_DETECTOR_H_
+diff --git a/content/renderer/media/stream/webmediaplayer_ms_unittest.cc b/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
+index bf66efe..00933375 100644
+--- a/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
++++ b/content/renderer/media/stream/webmediaplayer_ms_unittest.cc
+@@ -555,14 +555,13 @@
+   blink::WebMediaPlayer::DisplayType DisplayType() const override {
+     return blink::WebMediaPlayer::DisplayType::kInline;
+   }
++  bool IsInAutoPIP() const override { return false; }
+   void ActivateViewportIntersectionMonitoring(bool activate) override {}
+   void MediaRemotingStarted(
+       const blink::WebString& remote_device_friendly_name) override {}
+   void MediaRemotingStopped(
+       blink::WebLocalizedString::Name error_msg) override {}
+-  void PictureInPictureStarted() override {}
+   void PictureInPictureStopped() override {}
+-  bool IsInPictureInPictureMode() override { return false; }
  
-+#include <memory>
-+
- #include "base/macros.h"
- #include "base/time/time.h"
- #include "chrome/browser/vr/vr_export.h"
---- a/content/public/common/content_features.cc
-+++ b/content/public/common/content_features.cc
-@@ -224,7 +224,7 @@
+   // Implementation of cc::VideoFrameProvider::Client
+   void StopUsingProvider() override;
+diff --git a/media/blink/webmediaplayer_impl.cc b/media/blink/webmediaplayer_impl.cc
+index 82d7964..a3fc8994 100644
+--- a/media/blink/webmediaplayer_impl.cc
++++ b/media/blink/webmediaplayer_impl.cc
+@@ -331,7 +331,10 @@
+   client_->MediaRemotingStopped(
+       blink::WebLocalizedString::kMediaRemotingStopNoText);
  
- // Mojo-based Session Storage.
- const base::Feature kMojoSessionStorage{"MojoSessionStorage",
--                                        base::FEATURE_ENABLED_BY_DEFAULT};
-+                                        base::FEATURE_DISABLED_BY_DEFAULT};
+-  if (client_->IsInPictureInPictureMode())
++  // If running in Picture-in-Picture but not in auto-pip, notify the player.
++  if (client_->DisplayType() ==
++          WebMediaPlayer::DisplayType::kPictureInPicture &&
++      !client_->IsInAutoPIP())
+     ExitPictureInPicture(base::DoNothing());
  
- // Enables/disables the video capture service.
- const base::Feature kMojoVideoCapture {
-
-diff --git a/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object.cc b/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object.cc
-index 3656318..65370a2 100644
---- a/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object.cc
-+++ b/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object.cc
-@@ -133,10 +133,13 @@
-     return false;
- 
-   FloatPoint local_point = local_transform.Inverse().MapPoint(point_in_parent);
+   if (!surface_layer_for_video_enabled_ && video_layer_) {
+@@ -415,7 +418,10 @@
+   // disabled.
+   // The viz::SurfaceId may be updated when the video begins playback or when
+   // the size of the video changes.
+-  if (client_ && client_->IsInPictureInPictureMode()) {
++  if (client_ &&
++      client_->DisplayType() ==
++          WebMediaPlayer::DisplayType::kPictureInPicture &&
++      !client_->IsInAutoPIP()) {
+     delegate_->DidPictureInPictureSurfaceChange(
+         delegate_id_, surface_id, pipeline_metadata_.natural_size);
+   }
+@@ -801,9 +807,6 @@
+   delegate_->DidPictureInPictureModeStart(delegate_id_, pip_surface_id_,
+                                           pipeline_metadata_.natural_size,
+                                           std::move(callback));
 -
-   if (RuntimeEnabledFeatures::SlimmingPaintV175Enabled()) {
-+    LayoutPoint point_in_foreign_object(local_point);
-+    // |local_point| already includes the offset of the <foreignObject> element,
-+    // but PaintLayer::HitTestLayer assumes it has not been.
-+    point_in_foreign_object.MoveBy(-Layer()->LayoutBoxLocation());
-     HitTestResult layer_result(result.GetHitTestRequest(),
--                               LayoutPoint(local_point));
-+                               point_in_foreign_object);
-     bool retval = Layer()->HitTest(layer_result);
-     result = layer_result;
-     return retval;
-diff --git a/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object_test.cc b/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object_test.cc
-index f65f050..f591878 100644
---- a/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object_test.cc
-+++ b/third_party/blink/renderer/core/layout/svg/layout_svg_foreign_object_test.cc
-@@ -256,4 +256,58 @@
-   EXPECT_EQ(svg, GetDocument().ElementFromPoint(400, 400));
+-  if (client_)
+-    client_->PictureInPictureStarted();
  }
  
-+TEST_F(LayoutSVGForeignObjectTest,
-+       HitTestUnderClippedPositionedForeignObjectDescendant) {
-+  SetBodyInnerHTML(R"HTML(
-+    <style>
-+      * {
-+        margin: 0
-+      }
-+    </style>
-+    <svg id="svg" style="width: 600px; height: 600px">
-+      <foreignObject id="foreignObject" x="200" y="200" width="100"
-+          height="100">
-+        <div id="target" style="overflow: hidden; position: relative;
-+            width: 100px; height: 50px; left: 5px"></div>
-+      </foreignObject>
-+    </svg>
-+  )HTML");
+ void WebMediaPlayerImpl::ExitPictureInPicture(
+@@ -821,7 +824,9 @@
+ void WebMediaPlayerImpl::RegisterPictureInPictureWindowResizeCallback(
+     blink::WebMediaPlayer::PipWindowResizedCallback callback) {
+   DCHECK(pip_surface_id_.is_valid());
+-  DCHECK(client_->IsInPictureInPictureMode());
++  DCHECK(client_->DisplayType() ==
++             WebMediaPlayer::DisplayType::kPictureInPicture &&
++         !client_->IsInAutoPIP());
+ 
+   delegate_->RegisterPictureInPictureWindowResizeCallback(delegate_id_,
+                                                           std::move(callback));
+@@ -2967,7 +2972,7 @@
+   DCHECK(main_task_runner_->BelongsToCurrentThread());
+ 
+   // Don't optimize Picture-in-Picture players.
+-  if (client_->IsInPictureInPictureMode())
++  if (client_->DisplayType() == WebMediaPlayer::DisplayType::kPictureInPicture)
+     return false;
+ 
+ #if defined(OS_ANDROID)  // WMPI_CAST
+diff --git a/media/blink/webmediaplayer_impl_unittest.cc b/media/blink/webmediaplayer_impl_unittest.cc
+index a109241..d8d002d 100644
+--- a/media/blink/webmediaplayer_impl_unittest.cc
++++ b/media/blink/webmediaplayer_impl_unittest.cc
+@@ -168,12 +168,12 @@
+   MOCK_METHOD0(HasNativeControls, bool());
+   MOCK_METHOD0(IsAudioElement, bool());
+   MOCK_CONST_METHOD0(DisplayType, blink::WebMediaPlayer::DisplayType());
++  MOCK_CONST_METHOD0(IsInAutoPIP, bool());
+   MOCK_METHOD1(ActivateViewportIntersectionMonitoring, void(bool));
+   MOCK_METHOD1(MediaRemotingStarted, void(const blink::WebString&));
+   MOCK_METHOD1(MediaRemotingStopped, void(blink::WebLocalizedString::Name));
+   MOCK_METHOD0(PictureInPictureStarted, void());
+   MOCK_METHOD0(PictureInPictureStopped, void());
+-  MOCK_METHOD0(IsInPictureInPictureMode, bool());
+   MOCK_CONST_METHOD0(CouldPlayIfEnoughData, bool());
+ 
+   void set_is_autoplaying_muted(bool value) { is_autoplaying_muted_ = value; }
+@@ -1349,7 +1349,9 @@
+ TEST_F(WebMediaPlayerImplTest, PictureInPictureTriggerCallback) {
+   InitializeWebMediaPlayerImpl();
+ 
+-  EXPECT_CALL(client_, IsInPictureInPictureMode()).WillRepeatedly(Return(true));
++  EXPECT_CALL(client_, DisplayType())
++      .WillRepeatedly(
++          Return(blink::WebMediaPlayer::DisplayType::kPictureInPicture));
+   EXPECT_CALL(delegate_,
+               DidPictureInPictureSurfaceChange(delegate_.player_id(),
+                                                surface_id_, GetNaturalSize()))
+@@ -1427,8 +1429,9 @@
+     SetDuration(base::TimeDelta::FromSeconds(GetDurationSec()));
+ 
+     if (IsPictureInPictureOn()) {
+-      EXPECT_CALL(client_, IsInPictureInPictureMode())
+-          .WillRepeatedly(Return(true));
++      EXPECT_CALL(client_, DisplayType())
++          .WillRepeatedly(
++              Return(blink::WebMediaPlayer::DisplayType::kPictureInPicture));
+ 
+       wmpi_->OnSurfaceIdUpdated(surface_id_);
+     }
+diff --git a/third_party/blink/public/platform/web_media_player_client.h b/third_party/blink/public/platform/web_media_player_client.h
+index 383c411..9db1475 100644
+--- a/third_party/blink/public/platform/web_media_player_client.h
++++ b/third_party/blink/public/platform/web_media_player_client.h
+@@ -132,15 +132,9 @@
+   // to a localized string that explains the reason as user-readable text.
+   virtual void MediaRemotingStopped(WebLocalizedString::Name error_msg) = 0;
+ 
+-  // Informs that Picture-in-Picture mode has started for the media element.
+-  virtual void PictureInPictureStarted() = 0;
+-
+   // Informs that Picture-in-Picture mode has stopped for the media element.
+   virtual void PictureInPictureStopped() = 0;
+ 
+-  // Returns whether the media element is in Picture-in-Picture mode.
+-  virtual bool IsInPictureInPictureMode() = 0;
+-
+   // Returns whether the media element has native controls. It does not mean
+   // that the controls are currently visible.
+   virtual bool HasNativeControls() = 0;
+@@ -170,6 +164,10 @@
+   // WebMediaPlayer::kReadyStateHaveFutureData.
+   virtual bool CouldPlayIfEnoughData() const = 0;
+ 
++  // Returns whether the playback is in auto-pip mode which does not have th
++  // behavior as regular Picture-in-Picture.
++  virtual bool IsInAutoPIP() const = 0;
 +
-+  const auto& svg = *GetDocument().getElementById("svg");
-+  const auto& target = *GetDocument().getElementById("target");
-+  const auto& foreignObject = *GetDocument().getElementById("foreignObject");
+  protected:
+   ~WebMediaPlayerClient() = default;
+ };
+diff --git a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+index eb11df6..0112287 100644
+--- a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
++++ b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+@@ -47,6 +47,9 @@
+   // Should be called when an element has exited Picture-in-Picture.
+   virtual void OnExitedPictureInPicture(ScriptPromiseResolver*) = 0;
+ 
++  // Returns whether the given element is currently in Picture-in-Picture.
++  virtual bool IsPictureInPictureElement(const Element*) const = 0;
 +
-+  EXPECT_EQ(svg, GetDocument().ElementFromPoint(1, 1));
-+  EXPECT_EQ(foreignObject, GetDocument().ElementFromPoint(201, 201));
-+  EXPECT_EQ(target, GetDocument().ElementFromPoint(206, 206));
-+  EXPECT_EQ(foreignObject, GetDocument().ElementFromPoint(205, 255));
+   void Trace(blink::Visitor*) override;
+ 
+  protected:
+diff --git a/third_party/blink/renderer/core/html/media/html_audio_element.h b/third_party/blink/renderer/core/html/media/html_audio_element.h
+index 245427d..569b7b5 100644
+--- a/third_party/blink/renderer/core/html/media/html_audio_element.h
++++ b/third_party/blink/renderer/core/html/media/html_audio_element.h
+@@ -48,9 +48,7 @@
+   // WebMediaPlayerClient implementation.
+   void MediaRemotingStarted(
+       const WebString& remote_device_friendly_name) override {}
+-  void PictureInPictureStarted() override {}
+   void PictureInPictureStopped() override {}
+-  bool IsInPictureInPictureMode() override { return false; }
+   void MediaRemotingStopped(WebLocalizedString::Name error_msg) override {}
+ 
+  private:
+diff --git a/third_party/blink/renderer/core/html/media/html_media_element.h b/third_party/blink/renderer/core/html/media/html_media_element.h
+index ef680a2..6de68a7 100644
+--- a/third_party/blink/renderer/core/html/media/html_media_element.h
++++ b/third_party/blink/renderer/core/html/media/html_media_element.h
+@@ -440,6 +440,7 @@
+   }
+   gfx::ColorSpace TargetColorSpace() override;
+   bool WasAutoplayInitiated() override;
++  bool IsInAutoPIP() const override { return false; }
+ 
+   void LoadTimerFired(TimerBase*);
+   void ProgressEventTimerFired(TimerBase*);
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.cc b/third_party/blink/renderer/core/html/media/html_video_element.cc
+index 5229071..0b654ea 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.cc
++++ b/third_party/blink/renderer/core/html/media/html_video_element.cc
+@@ -259,7 +259,7 @@
+ // TODO(zqzhang): this callback could be used to hide native controls instead of
+ // using a settings. See `HTMLMediaElement::onMediaControlsEnabledChange`.
+ void HTMLVideoElement::OnBecamePersistentVideo(bool value) {
+-  is_picture_in_picture_ = value;
++  is_auto_picture_in_picture_ = value;
+ 
+   if (value) {
+     // Record the type of video. If it is already fullscreen, it is a video with
+@@ -545,7 +545,25 @@
+          PictureInPictureController::Status::kEnabled;
+ }
+ 
+-void HTMLVideoElement::PictureInPictureStarted() {
++void HTMLVideoElement::PictureInPictureStopped() {
++  PictureInPictureController::From(GetDocument())
++      .OnExitedPictureInPicture(nullptr);
 +}
 +
-+TEST_F(LayoutSVGForeignObjectTest,
-+       HitTestUnderTransformedForeignObjectDescendant) {
-+  SetBodyInnerHTML(R"HTML(
-+    <style>
-+      * {
-+        margin: 0
-+      }
-+    </style>
-+    <svg id="svg" style="width: 600px; height: 600px">
-+      <foreignObject id="foreignObject" x="200" y="200" width="100"
-+          height="100" transform="translate(30)">
-+        <div id="target" style="overflow: hidden; position: relative;
-+            width: 100px; height: 50px; left: 5px"></div>
-+      </foreignObject>
-+    </svg>
-+  )HTML");
-+
-+  const auto& svg = *GetDocument().getElementById("svg");
-+  const auto& target = *GetDocument().getElementById("target");
-+  const auto& foreignObject = *GetDocument().getElementById("foreignObject");
-+
-+  EXPECT_EQ(svg, GetDocument().ElementFromPoint(1, 1));
-+  EXPECT_EQ(foreignObject, GetDocument().ElementFromPoint(231, 201));
-+  EXPECT_EQ(target, GetDocument().ElementFromPoint(236, 206));
-+  EXPECT_EQ(foreignObject, GetDocument().ElementFromPoint(235, 255));
++WebMediaPlayer::DisplayType HTMLVideoElement::DisplayType() const {
++  if (is_auto_picture_in_picture_ ||
++      PictureInPictureController::From(GetDocument())
++          .IsPictureInPictureElement(this)) {
++    return WebMediaPlayer::DisplayType::kPictureInPicture;
++  }
++  return HTMLMediaElement::DisplayType();
 +}
 +
++bool HTMLVideoElement::IsInAutoPIP() const {
++  return is_auto_picture_in_picture_;
++}
++
++void HTMLVideoElement::OnEnteredPictureInPicture() {
+   if (!picture_in_picture_interstitial_) {
+     picture_in_picture_interstitial_ = new PictureInPictureInterstitial(*this);
+     ShadowRoot& shadow_root = EnsureUserAgentShadowRoot();
+@@ -554,25 +572,17 @@
+     HTMLMediaElement::AssertShadowRootChildren(shadow_root);
+   }
+   picture_in_picture_interstitial_->Show();
++
++  DCHECK(GetWebMediaPlayer());
++  GetWebMediaPlayer()->OnDisplayTypeChanged(DisplayType());
+ }
+ 
+-void HTMLVideoElement::PictureInPictureStopped() {
++void HTMLVideoElement::OnExitedPictureInPicture() {
+   if (picture_in_picture_interstitial_)
+     picture_in_picture_interstitial_->Hide();
+ 
+-  PictureInPictureController::From(GetDocument())
+-      .OnExitedPictureInPicture(nullptr);
+-}
+-
+-bool HTMLVideoElement::IsInPictureInPictureMode() {
+-  return picture_in_picture_interstitial_ &&
+-         picture_in_picture_interstitial_->IsVisible();
+-}
+-
+-WebMediaPlayer::DisplayType HTMLVideoElement::DisplayType() const {
+-  if (is_picture_in_picture_)
+-    return WebMediaPlayer::DisplayType::kPictureInPicture;
+-  return HTMLMediaElement::DisplayType();
++  if (GetWebMediaPlayer())
++    GetWebMediaPlayer()->OnDisplayTypeChanged(DisplayType());
+ }
+ 
+ void HTMLVideoElement::AddedEventListener(
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.h b/third_party/blink/renderer/core/html/media/html_video_element.h
+index 92d75fc..4099832 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.h
++++ b/third_party/blink/renderer/core/html/media/html_video_element.h
+@@ -148,11 +148,15 @@
+ 
+   void MediaRemotingStarted(const WebString& remote_device_friendly_name) final;
+   bool SupportsPictureInPicture() const final;
+-  void PictureInPictureStarted() final;
+   void PictureInPictureStopped() final;
+-  bool IsInPictureInPictureMode() final;
+   void MediaRemotingStopped(WebLocalizedString::Name error_msg) final;
+   WebMediaPlayer::DisplayType DisplayType() const final;
++  bool IsInAutoPIP() const final;
++
++  // Used by the PictureInPictureController as callback when the video element
++  // enters or exits Picture-in-Picture state.
++  void OnEnteredPictureInPicture();
++  void OnExitedPictureInPicture();
+ 
+  protected:
+   // EventTarget overrides.
+@@ -194,12 +198,14 @@
+ 
+   AtomicString default_poster_url_;
+ 
+-  // TODO(mlamouri): merge these later. At the moment, the former is used for
+-  // CSS rules used to hide the custom controls and the latter is used to report
+-  // the display type. It's unclear whether using the CSS rules also when native
+-  // controls are used would or would not have side effects.
++  // Represents whether the video is 'persistent'. It is used for videos with
++  // custom controls that are in auto-pip (Android). This boolean is used by a
++  // CSS rule.
+   bool is_persistent_ = false;
+-  bool is_picture_in_picture_ = false;
++
++  // Whether the video is currently in auto-pip (Android). It is not similar to
++  // a video being in regular Picture-in-Picture mode.
++  bool is_auto_picture_in_picture_ = false;
+ };
+ 
  }  // namespace blink
-diff --git a/third_party/blink/renderer/core/paint/paint_layer.cc b/third_party/blink/renderer/core/paint/paint_layer.cc
-index c525c96..e537bf4 100644
---- a/third_party/blink/renderer/core/paint/paint_layer.cc
-+++ b/third_party/blink/renderer/core/paint/paint_layer.cc
-@@ -1854,16 +1854,6 @@
-     ConvertToLayerCoords(root_layer, offset);
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
+index 9ca00f5..3fc1814 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
++++ b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.cc
+@@ -101,6 +101,8 @@
+ 
+   picture_in_picture_element_ = element;
+ 
++  picture_in_picture_element_->OnEnteredPictureInPicture();
++
+   picture_in_picture_element_->DispatchEvent(
+       Event::CreateBubble(EventTypeNames::enterpictureinpicture));
+ 
+@@ -141,6 +143,8 @@
+   if (picture_in_picture_element_) {
+     HTMLVideoElement* element = picture_in_picture_element_;
+     picture_in_picture_element_ = nullptr;
++
++    element->OnExitedPictureInPicture();
+     element->DispatchEvent(
+         Event::CreateBubble(EventTypeNames::leavepictureinpicture));
    }
-   offset.MoveBy(translation_offset);
--  // The location of a foreignObject element is added *after* transform, not
--  // before (all SVG child elements have this behavior). Therefore, remove
--  // the offset here to avoid applying it before the transform. It will be
--  // added later.
--  // TODO(chrishtr): this ugliness can be removed if we change the code to
--  // to be based on PaintOffset rather than PaintLayer offsets, like the
--  // paint code does. This is a larger effort though, that involves using
--  // property trees to drive hit testing coordinate spaces.
--  if (GetLayoutObject().IsSVGForeignObject())
--    offset.MoveBy(-LayoutBoxLocation());
+@@ -157,6 +161,13 @@
+   return scope.AdjustedElement(*picture_in_picture_element_);
+ }
  
-   LayoutObject* container_layout_object =
-       container_layer ? &container_layer->GetLayoutObject() : nullptr;
-@@ -1941,7 +1931,11 @@
-   if (result.GetHitTestRequest().IgnoreClipping())
-     clip_behavior = kIgnoreOverflowClip;
++bool PictureInPictureControllerImpl::IsPictureInPictureElement(
++    const Element* element) const {
++  if (!element)
++    return false;
++  return element == picture_in_picture_element_;
++}
++
+ void PictureInPictureControllerImpl::Trace(blink::Visitor* visitor) {
+   visitor->Trace(picture_in_picture_element_);
+   visitor->Trace(picture_in_picture_window_);
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
+index 3b362bd..94c3d66 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
++++ b/third_party/blink/renderer/modules/picture_in_picture/picture_in_picture_controller_impl.h
+@@ -43,9 +43,6 @@
+   // request Picture-in-Picture.
+   Status IsDocumentAllowed() const;
  
--  bool use_transform = Transform();
-+  // We can only reach an SVG foreign object's PaintLayer from
-+  // LayoutSVGForeignObject::NodeAtFloatPoint (because
-+  // IsReplacedNormalFlowStacking() true for LayoutSVGForeignObject),
-+  // where the hit_test_rect has already been transformed to local coordinates.
-+  bool use_transform = Transform() && !GetLayoutObject().IsSVGForeignObject();
+-  // Implementation of PictureInPictureController.
+-  Status IsElementAllowed(const HTMLVideoElement&) const override;
+-
+   // Enter Picture-in-Picture for a video element and resolve promise.
+   void EnterPictureInPicture(HTMLVideoElement*, ScriptPromiseResolver*);
  
-   // Apply a transform if we have one.
-   if (use_transform && !applied_transform) {
-@@ -2081,10 +2075,6 @@
-   }
+@@ -58,12 +55,14 @@
+   // Exit Picture-in-Picture for a video element and resolve promise if any.
+   void ExitPictureInPicture(HTMLVideoElement*, ScriptPromiseResolver*);
  
-   LayoutPoint offset = -LayoutBoxLocation();
--  // See comment in CreateLocalTransformState. The code here is
--  // where we re-add the location.
--  if (root_layer->GetLayoutObject().IsSVGForeignObject())
--    offset.MoveBy(root_layer->LayoutBoxLocation());
+-  // Implementation of PictureInPictureController.
+-  void OnExitedPictureInPicture(ScriptPromiseResolver*) override;
+-
+   // Returns element currently in Picture-in-Picture if any. Null otherwise.
+   Element* PictureInPictureElement(TreeScope&) const;
  
-   // Next we want to see if the mouse pos is inside the child LayoutObjects of
-   // the layer. Check every fragment in reverse order.
---- a/chrome/VERSION
-+++ b/chrome/VERSION
-@@ -1,4 +1,4 @@
- MAJOR=69
- MINOR=0
- BUILD=3447
--PATCH=0
-+PATCH=3
++  // Implementation of PictureInPictureController.
++  void OnExitedPictureInPicture(ScriptPromiseResolver*) override;
++  Status IsElementAllowed(const HTMLVideoElement&) const override;
++  bool IsPictureInPictureElement(const Element*) const override;
++
+   void Trace(blink::Visitor*) override;
+ 
+  private:
 
+--- a/chrome/browser/ui/views/fullscreen_control/fullscreen_control_host.cc
++++ b/chrome/browser/ui/views/fullscreen_control/fullscreen_control_host.cc
+@@ -66,9 +66,7 @@
+   // menu and controls reveal when the cursor is moved to the top.
+   return false;
+ #else
+-  return chrome::GetChannel() == version_info::Channel::CANARY ||
+-         chrome::GetChannel() == version_info::Channel::DEV ||
+-         base::FeatureList::IsEnabled(features::kFullscreenExitUI);
++  return base::FeatureList::IsEnabled(features::kFullscreenExitUI);
+ #endif
+ }
+ 
+diff --git a/chrome/common/chrome_features.cc b/chrome/common/chrome_features.cc
+index 38e424c..0c6d8c5 100644
+--- a/chrome/common/chrome_features.cc
++++ b/chrome/common/chrome_features.cc
+@@ -271,7 +271,7 @@
+ // Enables a floating action button-like full screen exit UI to allow exiting
+ // fullscreen using mouse or touch.
+ const base::Feature kFullscreenExitUI{"FullscreenExitUI",
+-                                      base::FEATURE_DISABLED_BY_DEFAULT};
++                                      base::FEATURE_ENABLED_BY_DEFAULT};
+ 
+ #if defined(OS_WIN)
+ // Enables using GDI to print text as simply text.
+
+--- a/third_party/blink/renderer/core/editing/frame_selection.cc
++++ b/third_party/blink/renderer/core/editing/frame_selection.cc
+@@ -554,6 +554,14 @@
+   if (!GetDocument().GetLayoutView())
+     return false;
+ 
++  // This is a workaround of the issue that we sometimes get null from
++  // ComputeVisibleSelectionInDOMTree(), but non-null from flat tree.
++  // By running this, in case we get null, we also set the cached result in flat
++  // tree into null, so that this function can return false correctly.
++  // See crbug.com/846527 for details.
++  // TODO(editing-dev): Fix the inconsistency and then remove this call.
++  ComputeVisibleSelectionInDOMTree();
++
+   // Treat a collapsed selection like no selection.
+   const VisibleSelectionInFlatTree& visible_selection =
+       ComputeVisibleSelectionInFlatTree();
+
+--- a/third_party/blink/renderer/core/editing/commands/clipboard_commands.cc
++++ b/third_party/blink/renderer/core/editing/commands/clipboard_commands.cc
+@@ -223,6 +223,20 @@
+   if (!frame.GetEditor().CanCopy())
+     return true;
+ 
++  Document* const document = frame.GetDocument();
++
++  // TODO(editing-dev): The use of UpdateStyleAndLayoutIgnorePendingStylesheets
++  // needs to be audited.  See http://crbug.com/590369 for more details.
++  // A 'copy' event handler might have dirtied the layout so we need to update
++  // before we obtain the selection.
++  document->UpdateStyleAndLayoutIgnorePendingStylesheets();
++
++  if (HTMLImageElement* image_element =
++          ImageElementFromImageDocument(document)) {
++    WriteImageNodeToClipboard(*image_element, document->title());
++    return true;
++  }
++
+   // Since copy is a read-only operation it succeeds anytime a selection
+   // is *visible*. In contrast to cut or paste, the selection does not
+   // need to be focused - being visible is enough.
+@@ -230,24 +244,12 @@
+       frame.Selection().IsHidden())
+     return true;
+ 
+-  // TODO(editing-dev): The use of UpdateStyleAndLayoutIgnorePendingStylesheets
+-  // needs to be audited.  See http://crbug.com/590369 for more details.
+-  // A 'copy' event handler might have dirtied the layout so we need to update
+-  // before we obtain the selection.
+-  frame.GetDocument()->UpdateStyleAndLayoutIgnorePendingStylesheets();
+-
+   if (EnclosingTextControl(
+           frame.Selection().ComputeVisibleSelectionInDOMTree().Start())) {
+     SystemClipboard::GetInstance().WritePlainText(
+         frame.SelectedTextForClipboard(), GetSmartReplaceOption(frame));
+     return true;
+   }
+-  const Document* const document = frame.GetDocument();
+-  if (HTMLImageElement* image_element =
+-          ImageElementFromImageDocument(document)) {
+-    WriteImageNodeToClipboard(*image_element, document->title());
+-    return true;
+-  }
+   WriteSelectionToClipboard(frame);
+   return true;
+ }
+diff --git a/third_party/blink/renderer/core/exported/web_frame_test.cc b/third_party/blink/renderer/core/exported/web_frame_test.cc
+index bf4c3ea..80e405d 100644
+--- a/third_party/blink/renderer/core/exported/web_frame_test.cc
++++ b/third_party/blink/renderer/core/exported/web_frame_test.cc
+@@ -11005,6 +11005,34 @@
+   EXPECT_EQ(loader->GetTiming().ResponseEnd(), resource->LoadFinishTime());
+ }
+ 
++TEST_F(WebFrameTest, CopyImageDocument) {
++  // After loading an image document, we should be able to copy it directly.
++
++  RegisterMockedHttpURLLoadWithMimeType("white-1x1.png", "image/png");
++  FrameTestHelpers::WebViewHelper web_view_helper;
++  web_view_helper.InitializeAndLoad(base_url_ + "white-1x1.png");
++  WebViewImpl* web_view = web_view_helper.GetWebView();
++  WebLocalFrameImpl* web_frame = web_view->MainFrameImpl();
++  Document* document = web_frame->GetFrame()->GetDocument();
++
++  ASSERT_TRUE(document);
++  EXPECT_TRUE(document->IsImageDocument());
++  EXPECT_TRUE(SystemClipboard::GetInstance().ReadAvailableTypes().IsEmpty());
++
++  bool result = web_frame->ExecuteCommand("Copy");
++  test::RunPendingTasks();
++
++  EXPECT_TRUE(result);
++
++  Vector<String> types = SystemClipboard::GetInstance().ReadAvailableTypes();
++  EXPECT_EQ(2u, types.size());
++  EXPECT_EQ("text/html", types[0]);
++  EXPECT_EQ("image/png", types[1]);
++
++  // Clear clipboard data
++  SystemClipboard::GetInstance().WritePlainText("");
++}
++
+ class CallbackOrderingWebFrameClient
+     : public FrameTestHelpers::TestWebFrameClient {
+  public:
+
+diff --git a/chrome/browser/chromeos/login/enrollment/auto_enrollment_controller.cc b/chrome/browser/chromeos/login/enrollment/auto_enrollment_controller.cc
+index 88bfbfb..733fe24 100644
+--- a/chrome/browser/chromeos/login/enrollment/auto_enrollment_controller.cc
++++ b/chrome/browser/chromeos/login/enrollment/auto_enrollment_controller.cc
+@@ -31,6 +31,16 @@
+ // enrollment check.
+ const int kInitialEnrollmentModulusPowerLimit = 6;
+ 
++// If the modulus requested by the server is higher or equal to
++// |1<<kInitialEnrollmentModulusPowerOutdatedServer|, assume that the server
++// does not know initial enrollment yet.
++// This is currently set to |14|, the server was requesting |16| for FRE on
++// 2018-05-25.
++// TODO(pmarko): Remove this mechanism when the server version supporting
++// Initial Enrollment has been in production for a while
++// (https://crbug.com/846645).
++const int kInitialEnrollmentModulusPowerOutdatedServer = 14;
++
+ // Maximum time to wait before forcing a decision.  Note that download time for
+ // state key buckets can be non-negligible, especially on 2G connections.
+ const int kSafeguardTimeoutSeconds = 90;
+@@ -142,7 +152,7 @@
+   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+ 
+   if (!command_line->HasSwitch(switches::kEnterpriseEnableInitialEnrollment))
+-    return false;
++    return IsOfficialChrome();
+ 
+   std::string command_line_mode = command_line->GetSwitchValueASCII(
+       switches::kEnterpriseEnableInitialEnrollment);
+@@ -476,7 +486,8 @@
+                           weak_ptr_factory_.GetWeakPtr()),
+       service, g_browser_process->local_state(),
+       g_browser_process->system_request_context(), serial_number,
+-      rlz_brand_code, power_initial, power_limit);
++      rlz_brand_code, power_initial, power_limit,
++      kInitialEnrollmentModulusPowerOutdatedServer);
+ 
+   VLOG(1) << "Starting auto-enrollment client for Initial Enrollment.";
+   client_->Start();
+diff --git a/chrome/browser/chromeos/policy/auto_enrollment_client.h b/chrome/browser/chromeos/policy/auto_enrollment_client.h
+index c1ffd67..4dcb20e 100644
+--- a/chrome/browser/chromeos/policy/auto_enrollment_client.h
++++ b/chrome/browser/chromeos/policy/auto_enrollment_client.h
+@@ -77,6 +77,12 @@
+     // the protocol will be cached in |local_state|. |power_initial| and
+     // |power_limit| are exponents of power-of-2 values which will be the
+     // initial modulus and the maximum modulus used by this client.
++    // If the modulus requested by the server is higher or equal than
++    // |1<<power_outdated_server_detect|, the client will assume that the server
++    // is outdated and that no Initial Enrollment should happen.
++    // TODO(pmarko): Remove |power_outdated_server_detect| when the server
++    // version supporting Initial Enrollment has been in production for a while
++    // (https://crbug.com/846645).
+     virtual std::unique_ptr<AutoEnrollmentClient> CreateForInitialEnrollment(
+         const ProgressCallback& progress_callback,
+         DeviceManagementService* device_management_service,
+@@ -85,7 +91,8 @@
+         const std::string& device_serial_number,
+         const std::string& device_brand_code,
+         int power_initial,
+-        int power_limit) = 0;
++        int power_limit,
++        int power_outdated_server_detect) = 0;
+   };
+ 
+   virtual ~AutoEnrollmentClient() {}
+diff --git a/chrome/browser/chromeos/policy/auto_enrollment_client_impl.cc b/chrome/browser/chromeos/policy/auto_enrollment_client_impl.cc
+index 3a92da13..5cf1dc1 100644
+--- a/chrome/browser/chromeos/policy/auto_enrollment_client_impl.cc
++++ b/chrome/browser/chromeos/policy/auto_enrollment_client_impl.cc
+@@ -348,7 +348,7 @@
+       std::make_unique<DeviceIdentifierProviderFRE>(server_backed_state_key),
+       std::make_unique<StateDownloadMessageProcessorFRE>(
+           server_backed_state_key),
+-      power_initial, power_limit, kUMASuffixFRE));
++      power_initial, power_limit, base::nullopt, kUMASuffixFRE));
+ }
+ 
+ std::unique_ptr<AutoEnrollmentClient>
+@@ -360,7 +360,8 @@
+     const std::string& device_serial_number,
+     const std::string& device_brand_code,
+     int power_initial,
+-    int power_limit) {
++    int power_limit,
++    int power_outdated_server_detect) {
+   return base::WrapUnique(new AutoEnrollmentClientImpl(
+       progress_callback, device_management_service, local_state,
+       system_request_context,
+@@ -368,7 +369,9 @@
+           device_serial_number, device_brand_code),
+       std::make_unique<StateDownloadMessageProcessorInitialEnrollment>(
+           device_serial_number, device_brand_code),
+-      power_initial, power_limit, kUMASuffixInitialEnrollment));
++      power_initial, power_limit,
++      base::make_optional(power_outdated_server_detect),
++      kUMASuffixInitialEnrollment));
+ }
+ 
+ AutoEnrollmentClientImpl::~AutoEnrollmentClientImpl() {
+@@ -440,6 +443,7 @@
+         state_download_message_processor,
+     int power_initial,
+     int power_limit,
++    base::Optional<int> power_outdated_server_detect,
+     std::string uma_suffix)
+     : progress_callback_(callback),
+       state_(AUTO_ENROLLMENT_STATE_IDLE),
+@@ -448,6 +452,7 @@
+       device_id_(base::GenerateGUID()),
+       current_power_(power_initial),
+       power_limit_(power_limit),
++      power_outdated_server_detect_(power_outdated_server_detect),
+       modulus_updates_received_(0),
+       device_management_service_(service),
+       local_state_(local_state),
+@@ -641,6 +646,21 @@
+       LOG(ERROR) << "Auto enrollment error: already retried with an updated "
+                  << "modulus but the server asked for a new one again: "
+                  << power;
++    } else if (power_outdated_server_detect_.has_value() &&
++               power >= power_outdated_server_detect_.value()) {
++      LOG(ERROR) << "Skipping auto enrollment: The server was detected as "
++                 << "outdated (power=" << power
++                 << ", power_outdated_server_detect="
++                 << power_outdated_server_detect_.value() << ").";
++      has_server_state_ = false;
++      // Cache the decision in local_state, so that it is reused in case
++      // the device reboots before completing OOBE. Note that this does not
++      // disable Forced Re-Enrollment for this device, because local state will
++      // be empty after the device is wiped.
++      local_state_->SetBoolean(prefs::kShouldAutoEnroll, false);
++      local_state_->SetInteger(prefs::kAutoEnrollmentPowerLimit, power_limit_);
++      local_state_->CommitPendingWrite();
++      return true;
+     } else if (power > power_limit_) {
+       LOG(ERROR) << "Auto enrollment error: the server asked for a larger "
+                  << "modulus than the client accepts (" << power << " vs "
+diff --git a/chrome/browser/chromeos/policy/auto_enrollment_client_impl.h b/chrome/browser/chromeos/policy/auto_enrollment_client_impl.h
+index 8d42a1f..52c0a58 100644
+--- a/chrome/browser/chromeos/policy/auto_enrollment_client_impl.h
++++ b/chrome/browser/chromeos/policy/auto_enrollment_client_impl.h
+@@ -11,6 +11,7 @@
+ #include "base/callback.h"
+ #include "base/macros.h"
+ #include "base/memory/scoped_refptr.h"
++#include "base/optional.h"
+ #include "base/time/time.h"
+ #include "chrome/browser/chromeos/policy/auto_enrollment_client.h"
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -71,7 +72,8 @@
+         const std::string& device_serial_number,
+         const std::string& device_brand_code,
+         int power_initial,
+-        int power_limit) override;
++        int power_limit,
++        int power_outdated_server_detect) override;
+ 
+    private:
+     DISALLOW_COPY_AND_ASSIGN(FactoryImpl);
+@@ -108,6 +110,7 @@
+           state_download_message_processor,
+       int power_initial,
+       int power_limit,
++      base::Optional<int> power_outdated_server_detect,
+       std::string uma_suffix);
+ 
+   // Tries to load the result of a previous execution of the protocol from
+@@ -183,6 +186,11 @@
+   // a retry response from the server.
+   int power_limit_;
+ 
++  // If set and the modulus requested by the server is higher than
++  // |1<<power_outdated_server_detect|, this client will assume that the server
++  // is outdated.
++  base::Optional<int> power_outdated_server_detect_;
++
+   // Number of requests for a different modulus received from the server.
+   // Used to determine if the server keeps asking for different moduli.
+   int modulus_updates_received_;
+diff --git a/chrome/browser/chromeos/policy/auto_enrollment_client_impl_unittest.cc b/chrome/browser/chromeos/policy/auto_enrollment_client_impl_unittest.cc
+index a5827f4..0d2777d 100644
+--- a/chrome/browser/chromeos/policy/auto_enrollment_client_impl_unittest.cc
++++ b/chrome/browser/chromeos/policy/auto_enrollment_client_impl_unittest.cc
+@@ -47,6 +47,11 @@
+ 
+ const int kInitialEnrollmentIdHashLength = 8;
+ 
++// This is modulus power value used in initial enrollment to detect that the
++// server is outdated and does not support initial enrollment. See the
++// |DetectOutdatedServer| test case.
++const int kInitialEnrollmentModulusPowerOutdatedServer = 14;
++
+ using ::testing::InSequence;
+ using ::testing::Mock;
+ using ::testing::SaveArg;
+@@ -93,7 +98,8 @@
+           AutoEnrollmentClientImpl::FactoryImpl().CreateForInitialEnrollment(
+               progress_callback, service_.get(), local_state_,
+               url_request_context_getter, kSerialNumber, kBrandCode,
+-              power_initial, power_limit);
++              power_initial, power_limit,
++              kInitialEnrollmentModulusPowerOutdatedServer);
+     }
+   }
+ 
+@@ -398,6 +404,31 @@
+   EXPECT_FALSE(HasServerBackedState());
+ }
+ 
++TEST_P(AutoEnrollmentClientImplTest, DetectOutdatedServer) {
++  CreateClient(0, kInitialEnrollmentModulusPowerOutdatedServer + 1);
++  InSequence sequence;
++  ServerWillReply(1 << kInitialEnrollmentModulusPowerOutdatedServer, false,
++                  false);
++
++  if (GetParam() == AutoEnrollmentProtocol::kInitialEnrollment) {
++    // For initial enrollment, a modulus power higher or equal to
++    // |kInitialEnrollmentModulusPowerOutdatedServer| means that the client will
++    // detect the server as outdated and will skip enrollment.
++    client()->Start();
++    EXPECT_EQ(AUTO_ENROLLMENT_STATE_NO_ENROLLMENT, state_);
++    EXPECT_TRUE(HasCachedDecision());
++    EXPECT_FALSE(HasServerBackedState());
++  } else {
++    // For FRE, such a detection does not exist. The client will do the second
++    // round and upload bits of its device identifier hash.
++    ServerWillReply(-1, false, false);
++    client()->Start();
++    EXPECT_EQ(AUTO_ENROLLMENT_STATE_NO_ENROLLMENT, state_);
++    EXPECT_TRUE(HasCachedDecision());
++    EXPECT_FALSE(HasServerBackedState());
++  }
++}
++
+ TEST_P(AutoEnrollmentClientImplTest, AskNonPowerOf2) {
+   InSequence sequence;
+   ServerWillReply(100, false, false);
+@@ -540,6 +571,12 @@
+ }
+ 
+ TEST_P(AutoEnrollmentClientImplTest, MoreThan32BitsUploaded) {
++  // Skip for initial enrollment, because the outdated server detection would
++  // kick in when more than |kInitialEnrollmentModulusPowerOutdatedServer| bits
++  // are requested.
++  if (GetParam() == AutoEnrollmentProtocol::kInitialEnrollment)
++    return;
++
+   CreateClient(10, 37);
+   InSequence sequence;
+   ServerWillReply(INT64_C(1) << 37, false, false);
+diff --git a/chrome/browser/chromeos/policy/fake_auto_enrollment_client.cc b/chrome/browser/chromeos/policy/fake_auto_enrollment_client.cc
+index dadafcb..0d1b50b 100644
+--- a/chrome/browser/chromeos/policy/fake_auto_enrollment_client.cc
++++ b/chrome/browser/chromeos/policy/fake_auto_enrollment_client.cc
+@@ -37,7 +37,8 @@
+     const std::string& device_serial_number,
+     const std::string& device_brand_code,
+     int power_initial,
+-    int power_limit) {
++    int power_limit,
++    int power_outdated_server_detect) {
+   std::unique_ptr<FakeAutoEnrollmentClient> fake_client =
+       std::make_unique<FakeAutoEnrollmentClient>(progress_callback);
+   fake_client_created_callback_.Run(fake_client.get());
+diff --git a/chrome/browser/chromeos/policy/fake_auto_enrollment_client.h b/chrome/browser/chromeos/policy/fake_auto_enrollment_client.h
+index 179866d..d7899b5 100644
+--- a/chrome/browser/chromeos/policy/fake_auto_enrollment_client.h
++++ b/chrome/browser/chromeos/policy/fake_auto_enrollment_client.h
+@@ -51,7 +51,8 @@
+         const std::string& device_serial_number,
+         const std::string& device_brand_code,
+         int power_initial,
+-        int power_limit) override;
++        int power_limit,
++        int power_outdated_server_detect) override;
+ 
+    private:
+     base::RepeatingCallback<void(FakeAutoEnrollmentClient*)>
+
+--- a/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge.cc
++++ b/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge.cc
+@@ -92,12 +92,14 @@
+   if (accessibility_manager->profile() != profile)
+     return arc::mojom::AccessibilityFilterType::OFF;
+ 
+-  if (accessibility_manager->IsSpokenFeedbackEnabled() ||
+-      accessibility_manager->IsSelectToSpeakEnabled() ||
++  if (accessibility_manager->IsSelectToSpeakEnabled() ||
+       accessibility_manager->IsSwitchAccessEnabled()) {
+     return arc::mojom::AccessibilityFilterType::ALL;
+   }
+ 
++  if (accessibility_manager->IsSpokenFeedbackEnabled())
++    return arc::mojom::AccessibilityFilterType::WHITELISTED_PACKAGE_NAME;
++
+   if (accessibility_manager->IsFocusHighlightEnabled())
+     return arc::mojom::AccessibilityFilterType::FOCUS;
+ 
+diff --git a/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge_browsertest.cc b/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge_browsertest.cc
+index 1bb0302..180d3ca 100644
+--- a/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge_browsertest.cc
++++ b/chrome/browser/chromeos/arc/accessibility/arc_accessibility_helper_bridge_browsertest.cc
+@@ -93,7 +93,7 @@
+               aura::client::kAccessibilityTouchExplorationPassThrough));
+ 
+   chromeos::AccessibilityManager::Get()->EnableSpokenFeedback(true);
+-  EXPECT_EQ(mojom::AccessibilityFilterType::ALL,
++  EXPECT_EQ(mojom::AccessibilityFilterType::WHITELISTED_PACKAGE_NAME,
+             fake_accessibility_helper_instance_->filter_type());
+ 
+   // Touch exploration pass through of test_window_1 (current active window)
