@@ -1,0 +1,51 @@
+From: csagan5 <32685696+csagan5@users.noreply.github.com>
+Date: Sat, 24 Mar 2018 05:18:03 +0100
+Subject: Canvas: fingerprinting mitigations for image data, font metrics and
+ webGL
+
+Disable webGL renderering info, add shuffling to TextMetrics;
+additionally, the color data returned by ToBlob and ToDataURL will
+contain randomly manipulated pixels (maximum 10) that slightly
+change the color R,G,B components without visibly altering the rendering.
+
+Credits to Slaviro (https://github.com/Slaviro) for coming up with a better
+approach to change color components.
+---
+ .../renderer/core/html/canvas/text_metrics.cc      |  20 +++
+ .../blink/renderer/core/html/canvas/text_metrics.h |   2 +
+ .../canvas/canvas2d/base_rendering_context_2d.cc   |   3 +
+ .../canvas/canvas2d/canvas_rendering_context_2d.cc |   6 +-
+ .../modules/webgl/webgl_debug_renderer_info.cc     |   4 +-
+ .../platform/graphics/image_data_buffer.cc         | 137 +++++++++++++++++++++
+ .../renderer/platform/graphics/image_data_buffer.h |   2 +
+ 7 files changed, 171 insertions(+), 3 deletions(-)
+
+diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
+--- a/third_party/blink/renderer/core/html/canvas/text_metrics.cc
++++ b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
+@@ -49,6 +49,25 @@
+   return 0;
+ }
+ 
++void TextMetrics::Shuffle(const double amt) {
++  double adjusted = 1 + amt;
++
++  // x-direction
++  width_ *= adjusted;
++  actual_bounding_box_left_ *= adjusted;
++  actual_bounding_box_right_ *= adjusted;
++
++  // y-direction
++  font_bounding_box_ascent_ *= adjusted;
++  font_bounding_box_descent_ *= adjusted;
++  actual_bounding_box_ascent_ *= adjusted;
++  actual_bounding_box_descent_ *= adjusted;
++  em_height_ascent_ *= adjusted;
++  em_height_descent_ *= adjusted;
++  baselines_ *= adjusted;
++}
++
++
+ void TextMetrics::Update(const Font& font,
+                          const TextDirection& direction,
+                          const TextBaseline& baseline,

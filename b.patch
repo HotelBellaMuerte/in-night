@@ -394,7 +394,7 @@ approach to change color components.
 diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
 --- a/third_party/blink/renderer/core/html/canvas/text_metrics.cc
 +++ b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
-@@ -47,6 +47,26 @@ float TextMetrics::GetFontBaseline(const TextBaseline& text_baseline,
+@@ -49,6 +49,24 @@
    return 0;
  }
  
@@ -413,10 +413,8 @@ diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third
 +  actual_bounding_box_descent_ *= adjusted;
 +  em_height_ascent_ *= adjusted;
 +  em_height_descent_ *= adjusted;
-+  hanging_baseline_ *= adjusted;
-+  alphabetic_baseline_ *= adjusted;
-+  ideographic_baseline_ *= adjusted;
 +}
++
 +
  void TextMetrics::Update(const Font& font,
                           const TextDirection& direction,
@@ -499,7 +497,7 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
  
  namespace blink {
  
-@@ -117,6 +119,139 @@
+@@ -117,6 +119,141 @@
    return static_cast<const unsigned char*>(pixmap_.addr());
  }
  
@@ -636,15 +634,18 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
 +}
 +
 +
- bool ImageDataBuffer::EncodeImage(
-     const String& mime_type,
-     const double& quality,
-@@ -134,6 +269,10 @@
-     SkTransferFunctionBehavior transfer_fn_behavior) const {
++
++
+ bool ImageDataBuffer::EncodeImage(const String& mime_type,
+                                   const double& quality,
+                                   Vector<unsigned char>* encoded_image) const {
+@@ -129,6 +266,11 @@
+                                           const SkPixmap& pixmap) const {
    DCHECK(is_valid_);
  
 +  // shuffle subchannel color data within the pixmap
 +  shuffleSubchannelColorData();
++
 +
 +
    if (mime_type == "image/jpeg") {
