@@ -22,8 +22,8 @@
  #include "ui/display/screen.h"
  #include "ui/message_center/message_center.h"
 
---- ui/message_center/views/message_popup_collection.h	2018-08-06 06:09:21.000000000 -0400
-+++ ui/message_center/views/message_popup_collection.h.new	2018-08-07 20:59:20.753169278 -0400
+--- a/ui/message_center/views/message_popup_collection.h	2018-08-08 21:56:47.000000000 -0400
++++ b/ui/message_center/views/message_popup_collection.h.new	2018-08-10 20:32:13.102948490 -0400
 @@ -5,6 +5,8 @@
  #ifndef UI_MESSAGE_CENTER_VIEWS_MESSAGE_POPUP_COLLECTION_H_
  #define UI_MESSAGE_CENTER_VIEWS_MESSAGE_POPUP_COLLECTION_H_
