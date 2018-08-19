@@ -484,8 +484,8 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
 +#include "base/rand_util.h"
  #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
  #include "third_party/blink/renderer/platform/image-encoders/image_encoder.h"
- #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
-@@ -45,6 +46,7 @@
+ #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+@@ -44,6 +45,7 @@
  #include "third_party/skia/include/core/SkSurface.h"
  #include "third_party/skia/include/core/SkSwizzle.h"
  #include "third_party/skia/include/encode/SkJpegEncoder.h"
@@ -493,7 +493,7 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
  
  namespace blink {
  
-@@ -117,6 +119,141 @@
+@@ -116,6 +118,140 @@
    return static_cast<const unsigned char*>(pixmap_.addr());
  }
  
@@ -631,11 +631,10 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
 +
 +
 +
-+
- bool ImageDataBuffer::EncodeImage(const String& mime_type,
+ bool ImageDataBuffer::EncodeImage(const ImageEncodingMimeType mime_type,
                                    const double& quality,
                                    Vector<unsigned char>* encoded_image) const {
-@@ -129,6 +266,11 @@
+@@ -128,6 +264,11 @@
                                            const SkPixmap& pixmap) const {
    DCHECK(is_valid_);
  
@@ -644,7 +643,7 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
 +
 +
 +
-   if (mime_type == "image/jpeg") {
+   if (mime_type == kMimeTypeJpeg) {
      SkJpegEncoder::Options options;
      options.fQuality = ImageEncoder::ComputeJpegQuality(quality);
 diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.h b/third_party/blink/renderer/platform/graphics/image_data_buffer.h

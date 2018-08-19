@@ -2,20 +2,20 @@
 18:56:56.242548793 -0400
 +++ b/components/autofill/core/common/autofill_prefs.cc.new	
 2018-08-07 18:58:22.599943254 -0400
-@@ -70,10 +70,10 @@
+@@ -75,10 +75,10 @@
    registry->RegisterIntegerPref(
        prefs::kAutofillCreditCardSigninPromoImpressionCount, 0);
    registry->RegisterBooleanPref(
--      prefs::kAutofillEnabled, true,
-+      prefs::kAutofillEnabled, false,
+-      prefs::kAutofillEnabledDeprecated, true,
++      prefs::kAutofillEnabledDeprecated, false,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    registry->RegisterBooleanPref(
 -      prefs::kAutofillProfileEnabled, true,
 +      prefs::kAutofillProfileEnabled, false,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterBooleanPref(prefs::kAutofillJapanCityFieldMigrated, false);
    registry->RegisterIntegerPref(
-       prefs::kAutofillLastVersionDeduped, 0,
-@@ -82,15 +82,15 @@
+@@ -88,15 +88,15 @@
        prefs::kAutofillLastVersionDisusedAddressesDeleted, 0,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
    // These choices are made on a per-device basis, so they're not syncable.
