@@ -1,82 +1,129 @@
-diff --git a/base/test/BUILD.gn b/base/test/BUILD.gn
-index ddede09..a06a02d 100644
---- a/base/test/BUILD.gn
-+++ b/base/test/BUILD.gn
-@@ -209,7 +209,6 @@
-     ]
-     if (current_toolchain == host_toolchain) {
-       data_deps += [ ":do_generate_fontconfig_caches" ]
--      data += [ "$root_out_dir/fontconfig_caches/" ]
+diff --git a/third_party/blink/renderer/bindings/core/v8/script_streamer.cc b/third_party/blink/renderer/bindings/core/v8/script_streamer.cc
+index c066507..af9364b 100644
+--- a/third_party/blink/renderer/bindings/core/v8/script_streamer.cc
++++ b/third_party/blink/renderer/bindings/core/v8/script_streamer.cc
+@@ -308,9 +308,7 @@
+   suppressed_reason_ = reason;
+ }
+ 
+-namespace {
+-
+-void RunScriptStreamingTask(
++static void RunScriptStreamingTask(
+     std::unique_ptr<v8::ScriptCompiler::ScriptStreamingTask> task,
+     ScriptStreamer* streamer) {
+   TRACE_EVENT1(
+@@ -323,23 +321,6 @@
+   streamer->StreamingCompleteOnBackgroundThread();
+ }
+ 
+-void RunBlockingScriptStreamingTask(
+-    std::unique_ptr<v8::ScriptCompiler::ScriptStreamingTask> task,
+-    ScriptStreamer* streamer,
+-    std::atomic_flag* blocking_task_started_or_cancelled) {
+-  if (!blocking_task_started_or_cancelled->test_and_set())
+-    return;
+-  RunScriptStreamingTask(std::move(task), streamer);
+-}
+-
+-void RunNonBlockingScriptStreamingTask(
+-    std::unique_ptr<v8::ScriptCompiler::ScriptStreamingTask> task,
+-    ScriptStreamer* streamer) {
+-  RunScriptStreamingTask(std::move(task), streamer);
+-}
+-
+-}  // namespace
+-
+ bool ScriptStreamer::HasEnoughDataForStreaming(size_t resource_buffer_size) {
+   if (RuntimeEnabledFeatures::ScheduledScriptStreamingEnabled()) {
+     // Enable streaming for small scripts, but we must still check the BOM
+@@ -427,24 +408,17 @@
      }
+ 
+     if (RuntimeEnabledFeatures::ScheduledScriptStreamingEnabled()) {
+-      // Script streaming tasks are high priority, as they can block the parser,
+-      // and they can (and probably will) block during their own execution as
+-      // they wait for more input.
+-      //
+-      // Pass through the atomic cancellation token which is set to true by the
+-      // task when it is started, or set to true by the streamer if it wants to
+-      // cancel the task.
++      // Script streaming tasks are high priority, as they can block the
++      // parser, and they can (and probably will) block during their own
++      // execution as they wait for more input.
+       //
+       // TODO(leszeks): Decrease the priority of these tasks where possible.
+       BackgroundScheduler::PostOnBackgroundThreadWithTraits(
+           FROM_HERE, {base::TaskPriority::USER_BLOCKING, base::MayBlock()},
+-          CrossThreadBind(RunBlockingScriptStreamingTask,
++          CrossThreadBind(RunScriptStreamingTask,
+                           WTF::Passed(std::move(script_streaming_task)),
+-                          WrapCrossThreadPersistent(this),
+-                          WTF::CrossThreadUnretained(
+-                              &blocking_task_started_or_cancelled_)));
++                          WrapCrossThreadPersistent(this)));
+     } else {
+-      blocking_task_started_or_cancelled_.test_and_set();
+       ScriptStreamerThread::Shared()->PostTask(
+           CrossThreadBind(&ScriptStreamerThread::RunScriptStreamingTask,
+                           WTF::Passed(std::move(script_streaming_task)),
+@@ -466,34 +440,8 @@
+     SuppressStreaming(kScriptTooSmall);
    }
  
-@@ -379,7 +378,8 @@
-       ]
-       args = []
-       outputs = [
--        "$root_out_dir/fontconfig_caches/STAMP",
-+        "$root_out_dir/fontconfig_caches/",
-+        "$root_out_dir/test_fonts/.uuid",
-       ]
-     }
-   }
-diff --git a/base/test/generate_fontconfig_caches.cc b/base/test/generate_fontconfig_caches.cc
-index f12eb48..bb94032 100644
---- a/base/test/generate_fontconfig_caches.cc
-+++ b/base/test/generate_fontconfig_caches.cc
-@@ -2,19 +2,53 @@
- // Use of this source code is governed by a BSD-style license that can be
- // found in the LICENSE file.
+-  if (stream_) {
+-    // If the corresponding blocking task hasn't started yet, cancel it and post
+-    // a non-blocking task, since we know now that all the data is received and
+-    // we will no longer block.
+-    //
+-    // TODO(874080): Once we have mutable task traits, simply unmark the
+-    // existing task as no longer MayBlock.
+-    if (RuntimeEnabledFeatures::ScheduledScriptStreamingEnabled() &&
+-        !blocking_task_started_or_cancelled_.test_and_set()) {
+-      ScriptState::Scope scope(script_state_);
+-      std::unique_ptr<v8::ScriptCompiler::ScriptStreamingTask>
+-          script_streaming_task(
+-              base::WrapUnique(v8::ScriptCompiler::StartStreamingScript(
+-                  script_state_->GetIsolate(), source_.get(),
+-                  compile_options_)));
+-
+-      // The task creation shouldn't fail, since it didn't fail before during
+-      // NotifyAppendData.
+-      CHECK(script_streaming_task);
+-      BackgroundScheduler::PostOnBackgroundThreadWithTraits(
+-          FROM_HERE, {base::TaskPriority::USER_BLOCKING},
+-          CrossThreadBind(RunNonBlockingScriptStreamingTask,
+-                          WTF::Passed(std::move(script_streaming_task)),
+-                          WrapCrossThreadPersistent(this)));
+-    }
+-
++  if (stream_)
+     stream_->DidFinishLoading();
+-  }
+   loading_finished_ = true;
  
-+#include <sys/stat.h>
-+#include <time.h>
-+#include <utime.h>
-+
- #include <string>
+   NotifyFinishedToClient();
+diff --git a/third_party/blink/renderer/bindings/core/v8/script_streamer.h b/third_party/blink/renderer/bindings/core/v8/script_streamer.h
+index a51424e..7a4f0ee 100644
+--- a/third_party/blink/renderer/bindings/core/v8/script_streamer.h
++++ b/third_party/blink/renderer/bindings/core/v8/script_streamer.h
+@@ -5,7 +5,6 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_SCRIPT_STREAMER_H_
+ #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_SCRIPT_STREAMER_H_
  
-+#include "base/base_paths.h"
- #include "base/files/file_path.h"
- #include "base/files/file_util.h"
- #include "base/path_service.h"
- #include "base/test/fontconfig_util_linux.h"
+-#include <atomic>
+ #include <memory>
  
-+// GIANT WARNING: The point of this file is to front-load construction of the
-+// font cache [which takes 600ms] from test run time to compile time. This saves
-+// 600ms on each test shard which uses the font cache into compile time. The
-+// problem is that fontconfig cache construction is not intended to be
-+// deterministic. This executable tries to set some external state to ensure
-+// determinism. We have no way of guaranteeing that this produces correct
-+// results, or even has the intended effect.
- int main(void) {
-+  // fontconfig generates a random uuid and uses it to match font folders with
-+  // the font cache. Rather than letting fontconfig generate a random uuid,
-+  // which introduces build non-determinism, we place a fixed uuid in the font
-+  // folder, which fontconfig will use to generate the cache.
-+  base::FilePath dir_module;
-+  base::PathService::Get(base::DIR_MODULE, &dir_module);
-+  base::FilePath uuid_file_path =
-+      dir_module.Append("test_fonts").Append(".uuid");
-+  const char uuid[] = "df1acc8c-39d5-4a8b-8507-b1a7396ac3ac";
-+  WriteFile(uuid_file_path, uuid, strlen(uuid));
-+
-+  // fontconfig writes the mtime of the test_fonts directory into the cache. It
-+  // presumably checks this later to ensure that the cache is still up to date.
-+  // We set the mtime to an arbitrary, fixed time in the past.
-+  base::FilePath test_fonts_file_path = dir_module.Append("test_fonts");
-+  struct stat old_times;
-+  struct utimbuf new_times;
-+
-+  stat(test_fonts_file_path.value().c_str(), &old_times);
-+  new_times.actime = old_times.st_atime;
-+  // Use an arbitrary, fixed time.
-+  new_times.modtime = 123456789;
-+  utime(test_fonts_file_path.value().c_str(), &new_times);
-+
-   base::SetUpFontconfig();
-   base::TearDownFontconfig();
+ #include "base/single_thread_task_runner.h"
+@@ -147,11 +146,6 @@
+   // Whether we have received enough data to start the streaming.
+   bool have_enough_data_for_streaming_;
  
--  base::FilePath dir_module;
--  CHECK(base::PathService::Get(base::DIR_MODULE, &dir_module));
-   base::FilePath fontconfig_caches = dir_module.Append("fontconfig_caches");
-   CHECK(base::DirectoryExists(fontconfig_caches));
-   base::FilePath stamp = fontconfig_caches.Append("STAMP");
+-  // Flag used to allow atomic cancelling and reposting of the streaming task
+-  // when the load completes without the task yet starting.
+-  // TODO(874080): Remove once we can mutate task traits.
+-  std::atomic_flag blocking_task_started_or_cancelled_;
+-
+   // Whether the script source code should be retrieved from the Resource
+   // instead of the ScriptStreamer.
+   bool streaming_suppressed_;

@@ -1,17 +1,13 @@
-diff --git a/src/api.cc b/src/api.cc
-index e7cc4f8..15bbed4 100644
---- a/v8/src/api.cc
-+++ b/v8/src/api.cc
-@@ -10471,9 +10471,9 @@
- #pragma clang diagnostic ignored "-Wdeprecated"
- #endif
-   return !this->AdvanceTracing(
--      deadline_in_ms,
--      AdvanceTracingActions(isinf(deadline_in_ms) ? FORCE_COMPLETION
--                                                  : DO_NOT_FORCE_COMPLETION));
-+      deadline_in_ms, AdvanceTracingActions(std::isinf(deadline_in_ms)
-+                                                ? FORCE_COMPLETION
-+                                                : DO_NOT_FORCE_COMPLETION));
- #if __clang__
- #pragma clang diagnostic pop
- #endif
+--- a/pdf/pdfium/pdfium_mem_buffer_file_write.cc	2018-08-27 
+06:09:45.000000000 -0400
++++ b/pdf/pdfium/pdfium_mem_buffer_file_write.cc.new	2018-08-27 
+20:55:22.415727873 -0400
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <cstdint>
++
+ #include "pdf/pdfium/pdfium_mem_buffer_file_write.h"
+ 
+ namespace chrome_pdf {
