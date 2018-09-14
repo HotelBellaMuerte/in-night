@@ -2,15 +2,6 @@
 06:05:36.000000000 -0400
 +++ b/components/safe_browsing/features.cc.new	2018-05-08 
 14:32:50.539706732 -0400
-@@ -50,7 +50,7 @@
-     "InspectDownloadedRarFiles", base::FEATURE_DISABLED_BY_DEFAULT};
- 
- const base::Feature kEnterprisePasswordProtectionV1{
--    "EnterprisePasswordProtectionV1", base::FEATURE_ENABLED_BY_DEFAULT};
-+    "EnterprisePasswordProtectionV1", base::FEATURE_DISABLED_BY_DEFAULT};
- 
- const base::Feature kForceEnableResetPasswordWebUI{
-     "ForceEnableResetPasswordWebUI", base::FEATURE_DISABLED_BY_DEFAULT};
 @@ -66,10 +66,10 @@
  } kExperimentalFeatures[]{
      {&kAdSamplerTriggerFeature, false},

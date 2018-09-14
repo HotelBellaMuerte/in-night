@@ -3,8 +3,8 @@
 +++ b/components/autofill/core/common/autofill_prefs.cc.new	
 2018-08-07 18:58:22.599943254 -0400
 @@ -75,10 +75,10 @@
-   registry->RegisterIntegerPref(
-       prefs::kAutofillCreditCardSigninPromoImpressionCount, 0);
+       prefs::kAutofillBillingCustomerNumber, 0.0,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
    registry->RegisterBooleanPref(
 -      prefs::kAutofillEnabledDeprecated, true,
 +      prefs::kAutofillEnabledDeprecated, false,
@@ -13,12 +13,21 @@
 -      prefs::kAutofillProfileEnabled, true,
 +      prefs::kAutofillProfileEnabled, false,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
-   registry->RegisterBooleanPref(prefs::kAutofillJapanCityFieldMigrated, false);
    registry->RegisterIntegerPref(
-@@ -88,15 +88,15 @@
+       prefs::kAutofillLastVersionDeduped, 0,
+@@ -87,7 +87,7 @@
        prefs::kAutofillLastVersionDisusedAddressesDeleted, 0,
        user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
-   // These choices are made on a per-device basis, so they're not syncable.
+   registry->RegisterBooleanPref(
+-      prefs::kAutofillCreditCardEnabled, true,
++      prefs::kAutofillCreditCardEnabled, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterStringPref(
+       prefs::kAutofillProfileValidity, "",
+@@ -97,9 +97,9 @@
+   registry->RegisterIntegerPref(
+       prefs::kAutofillCreditCardSigninPromoImpressionCount, 0);
+   registry->RegisterBooleanPref(prefs::kAutofillJapanCityFieldMigrated, false);
 -  registry->RegisterBooleanPref(prefs::kAutofillWalletImportEnabled, true);
 +  registry->RegisterBooleanPref(prefs::kAutofillWalletImportEnabled, false);
    registry->RegisterBooleanPref(
@@ -27,10 +36,3 @@
    registry->RegisterIntegerPref(
        prefs::kAutofillAcceptSaveCreditCardPromptState,
        prefs::PREVIOUS_SAVE_CREDIT_CARD_PROMPT_USER_DECISION_NONE);
-   registry->RegisterIntegerPref(
-       prefs::kAutofillLastVersionDisusedCreditCardsDeleted, 0);
--  registry->RegisterBooleanPref(prefs::kAutofillCreditCardEnabled, true);
-+  registry->RegisterBooleanPref(prefs::kAutofillCreditCardEnabled, false);
-   registry->RegisterBooleanPref(prefs::kAutofillOrphanRowsRemoved, false);
- }
- 
