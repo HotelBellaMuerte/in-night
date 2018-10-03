@@ -59,26 +59,6 @@
  void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
    registry->RegisterBooleanPref(prefs::kMediaRouterCastAllowAllIPs, false,
                                  PrefRegistry::PUBLIC);
-@@ -135,19 +122,8 @@
- }
- 
- bool ShouldUseViewsDialog() {
--#if defined(OS_MACOSX)
--#if BUILDFLAG(MAC_VIEWS_BROWSER)
--  // Cocoa browser is disabled if kExperimentalUi is enabled.
--  return (base::FeatureList::IsEnabled(features::kViewsCastDialog) &&
--          !features::IsViewsBrowserCocoa()) ||
--         base::FeatureList::IsEnabled(features::kExperimentalUi);
--#else   // !BUILDFLAG(MAC_VIEWS_BROWSER)
--  return false;
--#endif  // BUILDFLAG(MAC_VIEWS_BROWSER)
--#else   // !defined(OS_MACOSX)
-   return base::FeatureList::IsEnabled(features::kViewsCastDialog) ||
-          base::FeatureList::IsEnabled(features::kExperimentalUi);
--#endif  // defined(OS_MACOSX)
- }
- 
- bool ShouldUseMirroringService() {
 @@ -157,6 +133,5 @@
           base::FeatureList::IsEnabled(network::features::kNetworkService);
  }

@@ -1,17 +1,8 @@
-From 777d166eec22c1894108dce985498f75ac5931e8 Mon Sep 17 00:00:00 2001
-From: Mike Gilbert <floppym@gentoo.org>
-Date: Wed, 25 Apr 2018 13:22:49 -0400
-Subject: [PATCH] Disable various compiler configs
-
----
- build/config/compiler/BUILD.gn | 61 ++++++++++------------------------
- 1 file changed, 18 insertions(+), 43 deletions(-)
-
-diff --git a/build/config/compiler/BUILD.gn b/build/config/compiler/BUILD.gn
-index 6e38ad782d38..87bbd423f67f 100644
---- a/build/config/compiler/BUILD.gn
-+++ b/build/config/compiler/BUILD.gn
-@@ -225,8 +225,6 @@ config("compiler") {
+--- a/build/config/compiler/BUILD.gn	2018-09-27 17:46:15.466610575 
+-0400
++++ b/build/config/compiler/BUILD.gn.new	2018-09-27 
+17:47:08.756982567 -0400
+@@ -235,8 +235,6 @@
  
    configs += [
      # See the definitions below.
@@ -20,12 +11,11 @@ index 6e38ad782d38..87bbd423f67f 100644
      ":compiler_codegen",
    ]
  
-@@ -488,18 +486,6 @@ config("compiler") {
+@@ -499,17 +499,6 @@
      }
    }
  
--  if (is_clang && !is_nacl && current_toolchain == host_toolchain &&
--      target_os != "chromeos") {
+-  if (is_clang && !is_nacl && !use_xcode_clang) {
 -    cflags += [
 -      # TODO(hans): Remove this once Clang generates better optimized debug info
 -      # by default. https://crbug.com/765793
@@ -39,18 +29,20 @@ index 6e38ad782d38..87bbd423f67f 100644
    # Print absolute paths in diagnostics. There is no precedent for doing this
    # on Linux/Mac (GCC doesn't support it), but MSVC does this with /FC and
    # Windows developers rely on it (crbug.com/636109) so only do this on Windows.
-@@ -1473,10 +1459,6 @@ config("default_warnings") {
-         cflags += [
+@@ -1485,12 +1485,6 @@
            # TODO(thakis): https://crbug.com/753973
            "-Wno-enum-compare-switch",
--
+ 
 -          # Ignore warnings about MSVC optimization pragmas.
 -          # TODO(thakis): Only for no_chromium_code? http://crbug.com/505314
 -          "-Wno-ignored-pragma-optimize",
+-
+-          # TODO(hans): https://crbug.com/890307
+-          "-Wno-defaulted-function-deleted",
          ]
        }
      }
-@@ -1518,22 +1500,6 @@ config("chromium_code") {
+@@ -1567,22 +1538,6 @@
        "__STDC_FORMAT_MACROS",
      ]
  
@@ -70,10 +62,10 @@ index 6e38ad782d38..87bbd423f67f 100644
 -      defines += [ "_FORTIFY_SOURCE=2" ]
 -    }
 -
-     if (is_mac || is_ios) {
+     if (is_mac) {
        cflags_objc = [ "-Wobjc-missing-property-synthesis" ]
        cflags_objcc = [ "-Wobjc-missing-property-synthesis" ]
-@@ -1863,7 +1829,8 @@ config("default_stack_frames") {
+@@ -1952,7 +1907,8 @@
  }
  
  # Default "optimization on" config.
@@ -83,7 +75,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_win) {
      # TODO(thakis): Remove is_clang here, https://crbug.com/598772
      if (is_official_build && full_wpo_on_official && !is_clang) {
-@@ -1897,7 +1864,8 @@ config("optimize") {
+@@ -1986,7 +1942,8 @@
  }
  
  # Same config as 'optimize' but without the WPO flag.
@@ -93,7 +85,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_win) {
      # Favor size over speed, /O1 must be before the common flags. The GYP
      # build also specifies /Os and /GF but these are implied by /O1.
-@@ -1920,7 +1888,8 @@ config("optimize_no_wpo") {
+@@ -2009,7 +1966,8 @@
  }
  
  # Turn off optimizations.
@@ -103,7 +95,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_win) {
      cflags = [
        "/Od",  # Disable optimization.
-@@ -1944,7 +1913,8 @@ config("no_optimize") {
+@@ -2033,7 +1991,8 @@
  # Turns up the optimization level. On Windows, this implies whole program
  # optimization and link-time code generation which is very expensive and should
  # be used sparingly.
@@ -113,7 +105,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_nacl && is_nacl_irt) {
      # The NaCl IRT is a special case and always wants its own config.
      # Various components do:
-@@ -1991,7 +1961,8 @@ config("optimize_max") {
+@@ -2080,7 +2039,8 @@
  #
  # TODO(crbug.com/621335) - rework how all of these configs are related
  # so that we don't need this disclaimer.
@@ -123,7 +115,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_nacl && is_nacl_irt) {
      # The NaCl IRT is a special case and always wants its own config.
      # Various components do:
-@@ -2029,7 +2000,8 @@ config("optimize_speed") {
+@@ -2118,7 +2078,8 @@
    }
  }
  
@@ -133,7 +125,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    cflags = [ "-O1" ] + common_optimize_on_cflags
    ldflags = common_optimize_on_ldflags
    visibility = [ ":default_optimization" ]
-@@ -2115,7 +2087,8 @@ config("afdo") {
+@@ -2204,7 +2165,8 @@
  #   configs += [ "//build/config/compiler:symbols" ]
  
  # Full symbols.
@@ -143,7 +135,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_win) {
      if (use_goma || is_clang) {
        # Note that with VC++ this requires is_win_fastlink, enforced elsewhere.
-@@ -2213,7 +2186,8 @@ config("symbols") {
+@@ -2302,7 +2264,8 @@
  # Minimal symbols.
  # This config guarantees to hold symbol for stack trace which are shown to user
  # when crash happens in unittests running on buildbot.
@@ -153,7 +145,7 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (is_win) {
      # Linker symbols for backtraces only.
      cflags = []
-@@ -2244,7 +2218,8 @@ config("minimal_symbols") {
+@@ -2342,7 +2305,8 @@
  }
  
  # No symbols.
@@ -163,6 +155,3 @@ index 6e38ad782d38..87bbd423f67f 100644
    if (!is_win) {
      cflags = [ "-g0" ]
      asmflags = cflags
--- 
-2.18.0
-

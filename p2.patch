@@ -23,7 +23,7 @@
    Profile* original_profile = browser->profile()->GetOriginalProfile();
    SigninManagerBase* manager =
        SigninManagerFactory::GetForProfile(original_profile);
-@@ -424,17 +419,8 @@
+@@ -418,17 +418,8 @@
              access_point, signin_metrics::Reason::REASON_SIGNIN_PRIMARY_ACCOUNT,
              false));
      DCHECK_GT(browser->tab_strip_model()->count(), 0);
@@ -37,8 +37,7 @@
 -    browser->signin_view_controller()->ShowSignin(bubble_view_mode, browser,
 -                                                  access_point);
 -#endif
--  }
-+  } 
+   }
 +   #endif
  }
  
