@@ -1,37 +1,116 @@
---- a/chrome/browser/safe_browsing/protocol_manager.cc	2017-10-11 15:10:23.000000000 -0400
-+++ b/chrome/browser/safe_browsing/protocol_manager.cc	2017-10-15 11:03:53.868082962 -0400
-@@ -282,7 +282,7 @@
-   auto resource_request = std::make_unique<network::ResourceRequest>();
-   resource_request->url = gethash_url;
-   resource_request->method = "POST";
--  resource_request->load_flags = net::LOAD_DISABLE_CACHE;
-+  resource_request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES | net::LOAD_DO_NOT_SEND_COOKIES;
-   auto loader_ptr = network::SimpleURLLoader::Create(
-       std::move(resource_request), traffic_annotation);
-   loader_ptr->AttachStringForUpload(FormatGetHash(prefixes), "text/plain");
-@@ -688,7 +688,7 @@
-   auto resource_request = std::make_unique<network::ResourceRequest>();
-   resource_request->url = backup_update_url;
-   resource_request->method = "POST";
--  resource_request->load_flags = net::LOAD_DISABLE_CACHE;
-+  resource_request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES | net::LOAD_DO_NOT_SEND_COOKIES;
-   request_ = network::SimpleURLLoader::Create(std::move(resource_request),
-                                               traffic_annotation);
-   request_->AttachStringForUpload(update_list_data_, "text/plain");
-@@ -719,7 +719,7 @@
+diff --git a/content/browser/loader/navigation_url_loader_impl.cc b/content/browser/loader/navigation_url_loader_impl.cc
+index 0a79585..f0639c9 100644
+--- a/content/browser/loader/navigation_url_loader_impl.cc
++++ b/content/browser/loader/navigation_url_loader_impl.cc
+@@ -266,6 +266,7 @@
+       static_cast<int>(request_info->begin_params->request_context_type);
+   new_request->upgrade_if_insecure = request_info->upgrade_if_insecure;
+   new_request->throttling_profile_id = request_info->devtools_frame_token;
++  new_request->transition_type = request_info->common_params.transition;
+   return new_request;
+ }
  
-   auto resource_request = std::make_unique<network::ResourceRequest>();
-   resource_request->url = chunk_url;
--  resource_request->load_flags = net::LOAD_DISABLE_CACHE;
-+  resource_request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES | net::LOAD_DO_NOT_SEND_COOKIES;
-   request_ = network::SimpleURLLoader::Create(
-       std::move(resource_request), kChunkBackupRequestTrafficAnnotation);
-   request_->DownloadToStringOfUnboundedSizeUntilCrashAndDie(
-@@ -777,7 +777,7 @@
-   auto resource_request = std::make_unique<network::ResourceRequest>();
-   resource_request->url = update_url;
-   resource_request->method = "POST";
--  resource_request->load_flags = net::LOAD_DISABLE_CACHE;
-+  resource_request->load_flags = net::LOAD_DO_NOT_SAVE_COOKIES | net::LOAD_DO_NOT_SEND_COOKIES;
-   request_ = network::SimpleURLLoader::Create(
-       std::move(resource_request), kChunkBackupRequestTrafficAnnotation);
+@@ -458,7 +459,6 @@
+         weak_factory_.GetWeakPtr(),
+         base::Unretained(url_request_context_getter),
+         base::Unretained(upload_file_system_context),
+-        std::make_unique<NavigationRequestInfo>(*request_info_),
+         // If the request has already been intercepted, the request should not
+         // be intercepted again.
+         // S13nServiceWorker: Requests are intercepted by S13nServiceWorker
+@@ -477,7 +477,6 @@
+   void CreateNonNetworkServiceURLLoader(
+       net::URLRequestContextGetter* url_request_context_getter,
+       storage::FileSystemContext* upload_file_system_context,
+-      std::unique_ptr<NavigationRequestInfo> request_info,
+       ServiceWorkerNavigationHandleCore* service_worker_navigation_handle_core,
+       AppCacheNavigationHandleCore* appcache_handle_core,
+       scoped_refptr<SignedExchangePrefetchMetricRecorder>
+@@ -485,11 +484,9 @@
+       const network::ResourceRequest& /* resource_request */,
+       network::mojom::URLLoaderRequest url_loader,
+       network::mojom::URLLoaderClientPtr url_loader_client) {
+-    // |resource_request| is unused here. Its info may not be the same as
+-    // |request_info|, because URLLoaderThrottles may have rewritten it. We
+-    // don't propagate the fields to |request_info| here because the request
+-    // will usually go to ResourceDispatcherHost which does its own request
+-    // modification independent of URLLoaderThrottles.
++    // |resource_request| is unused here. We don't propagate the fields to
++    // |request_info_| here because the request will usually go to
++    // ResourceDispatcherHost which does its own request modifications.
+     DCHECK_CURRENTLY_ON(BrowserThread::IO);
+     DCHECK(!base::FeatureList::IsEnabled(network::features::kNetworkService));
+     DCHECK(started_);
+@@ -504,12 +501,12 @@
+       // SignedExchangeHandler which is indirectly owned by |this| until its
+       // header is verified and parsed, that's where the getter is used.
+       interceptors_.push_back(std::make_unique<SignedExchangeRequestHandler>(
+-          url::Origin::Create(request_info->common_params.url),
+-          GetURLLoaderOptions(request_info->is_main_frame),
+-          request_info->frame_tree_node_id,
+-          request_info->devtools_navigation_token,
+-          request_info->devtools_frame_token, request_info->report_raw_headers,
+-          request_info->begin_params->load_flags,
++          url::Origin::Create(request_info_->common_params.url),
++          GetURLLoaderOptions(request_info_->is_main_frame),
++          request_info_->frame_tree_node_id,
++          request_info_->devtools_navigation_token,
++          request_info_->devtools_frame_token, request_info_->report_raw_headers,
++          request_info_->begin_params->load_flags,
+           base::MakeRefCounted<
+               SignedExchangeURLLoaderFactoryForNonNetworkService>(
+               resource_context_, url_request_context_getter),
+@@ -519,13 +516,19 @@
+           std::move(signed_exchange_prefetch_metric_recorder)));
+     }
+ 
+-    uint32_t options = GetURLLoaderOptions(request_info->is_main_frame);
++    uint32_t options = GetURLLoaderOptions(request_info_->is_main_frame);
+ 
+     bool intercepted = false;
+     if (g_interceptor.Get()) {
++      // Recreate the ResourceRequest for the interceptor, in case a
++      // URLLoaderThrottle had changed request_info_.
++      auto latest_resource_request =
++          CreateResourceRequest(request_info_.get(), frame_tree_node_id_,
++                                resource_request_->allow_download);
++      latest_resource_request->headers = resource_request_->headers;
+       intercepted = g_interceptor.Get().Run(
+           &url_loader, frame_tree_node_id_, 0 /* request_id */, options,
+-          *resource_request_.get(), &url_loader_client,
++          *latest_resource_request, &url_loader_client,
+           net::MutableNetworkTrafficAnnotationTag(
+               kNavigationUrlLoaderTrafficAnnotation));
+     }
+@@ -534,7 +537,7 @@
+     if (!intercepted && ResourceDispatcherHostImpl::Get()) {
+       ResourceDispatcherHostImpl::Get()->BeginNavigationRequest(
+           resource_context_, url_request_context_getter->GetURLRequestContext(),
+-          upload_file_system_context, *request_info,
++          upload_file_system_context, *request_info_,
+           std::move(navigation_ui_data_), std::move(url_loader_client),
+           std::move(url_loader), service_worker_navigation_handle_core,
+           appcache_handle_core, options, global_request_id_);
+@@ -1009,6 +1012,14 @@
+     DCHECK_CURRENTLY_ON(BrowserThread::IO);
+     DCHECK(!redirect_info_.new_url.is_empty());
+ 
++    if (!base::FeatureList::IsEnabled(network::features::kNetworkService)) {
++      auto* common_params =
++          const_cast<CommonNavigationParams*>(&request_info_->common_params);
++      common_params->url = redirect_info_.new_url;
++      common_params->referrer.url = GURL(redirect_info_.new_referrer);
++      common_params->method = redirect_info_.new_method;
++    }
++
+     if (!IsLoaderInterceptionEnabled()) {
+       url_loader_->FollowRedirect(modified_request_headers);
+       return;
+@@ -1583,7 +1594,6 @@
+ 
+   std::unique_ptr<network::ResourceRequest> new_request = CreateResourceRequest(
+       request_info.get(), frame_tree_node_id, allow_download_);
+-  new_request->transition_type = request_info->common_params.transition;
+ 
+   auto* partition = static_cast<StoragePartitionImpl*>(storage_partition);
+   scoped_refptr<SignedExchangePrefetchMetricRecorder>

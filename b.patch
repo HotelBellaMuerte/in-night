@@ -178,22 +178,6 @@ From: csagan5 <32685696+csagan5@users.noreply.github.com>
 Date: Wed, 25 Apr 2018 10:23:51 +0200
 Subject: Disable metrics on all I/O threads
 
----
- chrome/browser/profiles/profile_io_data.cc | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/chrome/browser/profiles/profile_io_data.cc b/chrome/browser/profiles/profile_io_data.cc
---- a/chrome/browser/profiles/profile_io_data.cc
-+++ b/chrome/browser/profiles/profile_io_data.cc
-@@ -964,7 +964,7 @@ void ProfileIOData::InitializeMetricsEnabledStateOnUIThread() {
- 
- bool ProfileIOData::GetMetricsEnabledStateOnIOThread() const {
-   DCHECK_CURRENTLY_ON(BrowserThread::IO);
--  return enable_metrics_.GetValue();
-+  return false;
- }
- 
- chrome_browser_net::Predictor* ProfileIOData::GetPredictor() {
 -- 
 2.7.4
 
@@ -316,7 +300,7 @@ diff --git a/services/device/battery/battery_status_service.cc b/services/device
 diff --git a/third_party/blink/renderer/modules/battery/battery_manager.cc b/third_party/blink/renderer/modules/battery/battery_manager.cc
 --- a/third_party/blink/renderer/modules/battery/battery_manager.cc
 +++ b/third_party/blink/renderer/modules/battery/battery_manager.cc
-<pre>@@ -42,26 +42,24 @@
+@@ -42,26 +42,24 @@
  }
  
  bool BatteryManager::charging() {
@@ -345,20 +329,20 @@ diff --git a/third_party/blink/renderer/modules/battery/battery_manager.cc b/thi
 -  BatteryStatus old_status = battery_status_;
 -  battery_status_ = *BatteryDispatcher::Instance().LatestData();
  
-   if (battery_property_-&gt;GetState() == ScriptPromisePropertyBase::kPending) {
-     battery_property_-&gt;Resolve(this);
+   if (battery_property_->GetState() == ScriptPromisePropertyBase::kPending) {
+     battery_property_->Resolve(this);
 @@ -73,14 +71,6 @@
-   if (document-&gt;IsContextPaused() || document-&gt;IsContextDestroyed())
+   if (document->IsContextPaused() || document->IsContextDestroyed())
      return;
  
 -  if (battery_status_.Charging() != old_status.Charging())
--    DispatchEvent(*Event::Create(EventTypeNames::chargingchange));
+-    DispatchEvent(*Event::Create(event_type_names::kChargingchange));
 -  if (battery_status_.charging_time() != old_status.charging_time())
--    DispatchEvent(*Event::Create(EventTypeNames::chargingtimechange));
+-    DispatchEvent(*Event::Create(event_type_names::kChargingtimechange));
 -  if (battery_status_.discharging_time() != old_status.discharging_time())
--    DispatchEvent(*Event::Create(EventTypeNames::dischargingtimechange));
+-    DispatchEvent(*Event::Create(event_type_names::kDischargingtimechange));
 -  if (battery_status_.Level() != old_status.Level())
--    DispatchEvent(*Event::Create(EventTypeNames::levelchange));
+-    DispatchEvent(*Event::Create(event_type_names::kLevelchange));
  }
  
  void BatteryManager::RegisterWithDispatcher() {
@@ -460,11 +444,11 @@ diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/canvas_rendering
 diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
 --- a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
 +++ b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
-@@ -37,11 +37,11 @@ WebGLExtensionName WebGLDebugRendererInfo::GetName() const {
+@@ -37,11 +37,11 @@
  
  WebGLDebugRendererInfo* WebGLDebugRendererInfo::Create(
      WebGLRenderingContextBase* context) {
--  return new WebGLDebugRendererInfo(context);
+-  return MakeGarbageCollected<WebGLDebugRendererInfo>(context);
 +  return nullptr;
  }
  
@@ -489,7 +473,7 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b
  #include "third_party/skia/include/core/SkSurface.h"
  #include "third_party/skia/include/core/SkSwizzle.h"
  #include "third_party/skia/include/encode/SkJpegEncoder.h"
-+#include "third_party/skia/src/core/SkColorData.h"
++#include "../../include/private/SkColorData.h"
  
  namespace blink {
  
@@ -661,14 +645,3 @@ diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.h b/
 -- 
 2.7.4
 
---- a/third_party/skia/src/core/SkColorData.h	2018-06-18 06:17:42.000000000 -0400
-+++ b/third_party/skia/src/core/SkColorData.h.new	2018-06-22 23:24:44.710588063 -0400
-@@ -15,7 +15,7 @@
- 
- #include "SkColor.h"
- #include "SkColorPriv.h"
--#include "SkTo.h"
-+#include "../../include/private/SkTo.h"
- 
- //////////////////////////////////////////////////////////////////////////////
- 

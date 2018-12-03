@@ -2,15 +2,19 @@
 12:58:55.209480131 -0400
 +++ b/components/component_updater/configurator_impl.cc.new	
 2018-05-16 12:58:31.119061771 -0400
-@@ -130,15 +130,6 @@
+@@ -77,19 +77,6 @@
  }
  
  std::vector<GURL> ConfiguratorImpl::UpdateUrl() const {
--  if (url_source_override_.is_valid()) {
+-  if (url_source_override_.is_valid())
 -    return {GURL(url_source_override_)};
--  }
 -
--  std::vector<GURL> urls{GURL(kUpdaterDefaultUrl), GURL(kUpdaterFallbackUrl)};
+-  std::vector<GURL> urls =
+-      base::FeatureList::IsEnabled(kFeatureUpdateClientUseJSON)
+-          ? std::vector<GURL>{GURL(kUpdaterJSONDefaultUrl),
+-                              GURL(kUpdaterJSONFallbackUrl)}
+-          : std::vector<GURL>{GURL(kUpdaterDefaultUrl),
+-                              GURL(kUpdaterFallbackUrl)};
 -  if (require_encryption_)
 -    update_client::RemoveUnsecureUrls(&urls);
 -

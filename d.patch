@@ -32,15 +32,15 @@
  }  // namespace domain_reliability
 --- a/components/domain_reliability/uploader.cc
 +++ b/components/domain_reliability/uploader.cc
-@@ -78,7 +78,7 @@ class DomainReliabilityUploaderImpl
-     VLOG(1) << "Uploading report to " << upload_url;
-     VLOG(2) << "Report JSON: " << report_json;
+@@ -79,7 +79,7 @@
+     DVLOG(1) << "Uploading report to " << upload_url;
+     DVLOG(2) << "Report JSON: " << report_json;
  
--    if (discard_uploads_ || shutdown_) {
-+    if (true) {
-       VLOG(1) << "Discarding report instead of uploading.";
-       UploadResult result;
-       result.status = UploadResult::SUCCESS;
+-    if (discard_uploads_)
++    if (true)
+       discarded_upload_count_++;
+ 
+     if (discard_uploads_ || shutdown_) {
 --- a/components/domain_reliability/bake_in_configs.py
 +++ b/components/domain_reliability/bake_in_configs.py
 @@ -489,7 +489,7 @@ def origin_is_whitelisted(origin):

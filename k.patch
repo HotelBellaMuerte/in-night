@@ -1,25 +1,26 @@
---- a/components/url_formatter/url_formatter.cc	2017-10-04 18:07:40.000000000 -0400
-+++ b/components/url_formatter/url_formatter.cc	2017-10-10 10:03:41.359648335 -0400
-@@ -401,14 +401,14 @@
+--- a/components/url_formatter/url_formatter.cc	2018-10-27 
+06:13:07.000000000 -0400
++++ b/components/url_formatter/url_formatter.cc.new	2018-10-27 
+18:36:17.807443808 -0400
+@@ -409,14 +409,14 @@
  
  }  // namespace
  
 -const FormatUrlType kFormatUrlOmitNothing = 0;
--const FormatUrlType kFormatUrlOmitUsernamePassword = 1 << 0;
++const FormatUrlType kFormatUrlOmitNothing = 1;
+ const FormatUrlType kFormatUrlOmitUsernamePassword = 1 << 0;
 -const FormatUrlType kFormatUrlOmitHTTP = 1 << 1;
 -const FormatUrlType kFormatUrlOmitTrailingSlashOnBareHostname = 1 << 2;
 -const FormatUrlType kFormatUrlOmitHTTPS = 1 << 3;
--const FormatUrlType kFormatUrlExperimentalElideAfterHost = 1 << 4;
 -const FormatUrlType kFormatUrlOmitTrivialSubdomains = 1 << 5;
 -const FormatUrlType kFormatUrlTrimAfterHost = 1 << 6;
-+const FormatUrlType kFormatUrlOmitNothing = 1;
-+const FormatUrlType kFormatUrlOmitUsernamePassword = 0 << 0;
+-const FormatUrlType kFormatUrlOmitFileScheme = 1 << 7;
 +const FormatUrlType kFormatUrlOmitHTTP = 0 << 1;
 +const FormatUrlType kFormatUrlOmitTrailingSlashOnBareHostname = 0 << 2;
 +const FormatUrlType kFormatUrlOmitHTTPS = 0 << 3;
-+const FormatUrlType kFormatUrlExperimentalElideAfterHost = 0 << 4;
 +const FormatUrlType kFormatUrlOmitTrivialSubdomains = 0 << 5;
 +const FormatUrlType kFormatUrlTrimAfterHost = 0 << 6;
++const FormatUrlType kFormatUrlOmitFileScheme = 0 << 7;
  
  const FormatUrlType kFormatUrlOmitDefaults =
      kFormatUrlOmitUsernamePassword | kFormatUrlOmitHTTP |

@@ -11,7 +11,7 @@
  
  // Returns the base URL for the autofill server.
  GURL GetAutofillServerURL() {
-@@ -441,45 +441,6 @@
+@@ -624,67 +624,6 @@
  }
  
  bool AutofillDownloadManager::StartRequest(FormRequestData request_data) {
@@ -22,7 +22,9 @@
 -  // Get the URL and method to use for this request.
 -  std::string method;
 -  GURL request_url;
--  std::tie(request_url, method) = GetRequestURLAndMethod(request_data);
+-  std::tie(request_url, method) =
+-      UseApi() ? GetRequestURLAndMethodForApi(request_data)
+-               : GetRequestURLAndMethod(request_data);
 -
 -  auto resource_request = std::make_unique<network::ResourceRequest>();
 -  resource_request->url = request_url;
@@ -37,11 +39,31 @@
 -                             : variations::InIncognito::kNo,
 -      &resource_request->headers);
 -
+-  // Set headers specific to the API if using it.
+-  if (UseApi()) {
+-    // Encode response serialized proto in base64 for safety.
+-    resource_request->headers.SetHeader(kGoogEncodeResponseIfExecutable,
+-                                        "base64");
+-    // Put API key in request's header if there is.
+-    if (!api_key_.empty())
+-      resource_request->headers.SetHeader(kGoogApiKey, api_key_);
+-  }
+-
 -  auto simple_loader = network::SimpleURLLoader::Create(
 -      std::move(resource_request),
 -      GetNetworkTrafficAnnotation(request_data.request_type));
--  if (method == "POST")
--    simple_loader->AttachStringForUpload(request_data.payload, "text/proto");
+-
+-  // This allows reading the error message within the API response when status
+-  // is not 200 (e.g., 400). Otherwise, URL loader will not give any content in
+-  // the response when there is a failure, which makes debugging hard.
+-  simple_loader->SetAllowHttpErrorResults(true);
+-
+-  if (method == "POST") {
+-    const std::string content_type =
+-        UseApi() ? "application/x-protobuf" : "text/proto";
+-    // Attach payload data and add data format header.
+-    simple_loader->AttachStringForUpload(request_data.payload, content_type);
+-  }
 -
 -  // Transfer ownership of the loader into url_loaders_. Temporarily hang
 -  // onto the raw pointer to use it as a key and to kick off the request;

@@ -1,23 +1,22 @@
 --- a/components/safe_browsing/features.cc	2018-05-08 
 06:05:36.000000000 -0400
 +++ b/components/safe_browsing/features.cc.new	2018-05-08 
-14:32:50.539706732 -0400
-@@ -65,12 +65,12 @@
+@@ -62,13 +62,13 @@
    bool probabilistically_enabled;
  } kExperimentalFeatures[]{
      {&kAdSamplerTriggerFeature, false},
--    {&kAdvancedProtectionStatusFeature, true},
 -    {&kBillingInterstitial, true},
 -    {&kCheckByURLLoaderThrottle, true},
 -    {&kForceEnableResetPasswordWebUI, true},
--    {&kInspectDownloadedRarFiles, true},
 -    {&kSuspiciousSiteTriggerQuotaFeature, true},
-+    {&kAdvancedProtectionStatusFeature, false},
 +    {&kBillingInterstitial, false},
 +    {&kCheckByURLLoaderThrottle, false},
 +    {&kForceEnableResetPasswordWebUI, false},
-+    {&kInspectDownloadedRarFiles, false},
 +    {&kSuspiciousSiteTriggerQuotaFeature, false},
      {&kThreatDomDetailsTagAndAttributeFeature, false},
      {&kTriggerThrottlerDailyQuotaFeature, false},
+-    {&kUseLocalBlacklistsV2, true},
++    {&kUseLocalBlacklistsV2, false},
  };
+ 
+ // Adds the name and the enabled/disabled status of a given feature.
